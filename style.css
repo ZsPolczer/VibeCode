@@ -1,0 +1,128 @@
+/* Basic Reset & Retro Font */
+body {
+    background-color: #000000; /* Black background */
+    color: #00ff00; /* Bright green text */
+    font-family: 'Press Start 2P', cursive; /* Pixel font */
+    margin: 0;
+    padding: 0;
+    font-size: 16px; /* Base pixel font size */
+    line-height: 1.6;
+    text-shadow: 0 0 5px #00ff00, 0 0 10px #00ff00; /* Green glow */
+}
+
+a {
+    color: #00ffff; /* Cyan links */
+    text-decoration: none;
+    transition: all 0.3s ease; /* Smooth transitions */
+    text-shadow: 0 0 5px #00ffff, 0 0 10px #00ffff; /* Cyan glow */
+}
+
+a:hover, a:focus {
+    color: #ffff00; /* Yellow on hover/focus */
+    background-color: rgba(0, 255, 255, 0.1); /* Subtle cyan background */
+    text-shadow: 0 0 5px #ffff00, 0 0 10px #ffff00; /* Yellow glow */
+    outline: 2px dashed #ffff00; /* Dashed outline on focus */
+    outline-offset: 3px;
+}
+
+/* Layout Container */
+.container {
+    max-width: 800px;
+    margin: 2rem auto; /* Center the content with some margin */
+    padding: 2rem;
+    border: 3px solid #ff00ff; /* Magenta border */
+    box-shadow: 0 0 15px #ff00ff, inset 0 0 10px #ff00ff; /* Magenta glow */
+    background-color: rgba(0, 0, 0, 0.8); /* Slightly transparent black bg */
+}
+
+/* Header */
+header {
+    text-align: center;
+    margin-bottom: 2rem;
+    border-bottom: 2px dashed #00ff00; /* Green dashed line */
+    padding-bottom: 1rem;
+}
+
+h1 {
+    font-size: 2.5rem; /* Larger title */
+    color: #ff00ff; /* Magenta title */
+    margin-bottom: 0.5rem;
+    text-shadow: 0 0 8px #ff00ff, 0 0 15px #ff00ff; /* Magenta glow */
+    letter-spacing: 2px;
+}
+
+header p {
+    font-size: 1rem;
+    color: #00ff00; /* Green subtitle */
+}
+
+/* Game List Navigation */
+.game-list-nav {
+    margin-bottom: 2rem;
+}
+
+h2 {
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+    color: #ffff00; /* Yellow section title */
+    text-shadow: 0 0 5px #ffff00;
+    text-align: center;
+}
+
+#game-list {
+    list-style: none; /* Remove default bullet points */
+    padding: 0;
+    margin: 0;
+    text-align: center; /* Center list items */
+}
+
+#game-list li {
+    margin-bottom: 0.8rem; /* Space between game links */
+}
+
+.game-link {
+    display: inline-block; /* Allows padding and centering */
+    padding: 0.5rem 1rem;
+    border: 1px solid #00ffff; /* Cyan border */
+    background-color: rgba(0, 0, 0, 0.5); /* Dark background for link */
+}
+
+.game-link:hover, .game-link:focus {
+    transform: scale(1.05); /* Slightly enlarge on hover */
+    box-shadow: 0 0 10px #ffff00; /* Yellow glow on hover */
+}
+
+/* Loading/Empty State */
+.loading, .no-games {
+    font-style: italic;
+    color: #aaaaaa; /* Dimmer color */
+    text-shadow: none;
+    text-align: center;
+}
+
+/* Footer */
+footer {
+    margin-top: 2rem;
+    padding-top: 1rem;
+    border-top: 2px dashed #00ff00; /* Green dashed line */
+    text-align: center;
+    font-size: 0.8rem;
+    color: #aaaaaa; /* Dimmer grey */
+    text-shadow: none;
+}
+
+/* Optional: Subtle Scanline Effect */
+body::before {
+    content: " ";
+    display: block;
+    position: fixed; /* Use fixed to cover viewport */
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: 0;
+    background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+    z-index: 2; /* Place on top */
+    background-size: 100% 4px, 6px 100%; /* Size of lines */
+    pointer-events: none; /* Allow clicks through */
+    opacity: 0.2; /* Make it subtle */
+}

@@ -3,194 +3,87 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ZombiGames</title>
-    <style>
-        body {
-            background-color: #0a0a0a;
-            color: #00ff00;
-            font-family: 'Courier New', monospace;
-            margin: 0;
-            padding: 20px;
-            background-image: 
-                linear-gradient(rgba(0, 255, 0, 0.05) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(0, 255, 0, 0.05) 1px, transparent 1px);
-            background-size: 20px 20px;
-            text-align: center;
-        }
-
-        .container {
-            max-width: 800px;
-            margin: 0 auto;
-            border: 2px solid #00ff00;
-            padding: 20px;
-            box-shadow: 0 0 20px rgba(0, 255, 0, 0.5);
-            background-color: rgba(0, 0, 0, 0.8);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .container::before {
-            content: "";
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 2px;
-            background: linear-gradient(90deg, transparent, #00ff00, transparent);
-            animation: scanline 3s linear infinite;
-        }
-
-        @keyframes scanline {
-            0% { top: 0; }
-            100% { top: 100%; }
-        }
-
-        h1 {
-            font-size: 3em;
-            text-shadow: 0 0 10px #00ff00;
-            margin-bottom: 30px;
-            letter-spacing: 5px;
-            text-transform: uppercase;
-            animation: flicker 1s infinite alternate;
-        }
-
-        @keyframes flicker {
-            0% { opacity: 0.8; }
-            100% { opacity: 1; }
-        }
-
-        .game-list {
-            list-style-type: none;
-            padding: 0;
-        }
-
-        .game-item {
-            margin: 15px 0;
-        }
-
-        .game-link {
-            display: block;
-            color: #00ff00;
-            text-decoration: none;
-            font-size: 1.5em;
-            padding: 10px;
-            border: 1px solid #00ff00;
-            transition: all 0.3s;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .game-link:hover {
-            background-color: rgba(0, 255, 0, 0.2);
-            box-shadow: 0 0 15px rgba(0, 255, 0, 0.7);
-            transform: scale(1.05);
-        }
-
-        .game-link::before {
-            content: ">";
-            position: absolute;
-            left: 10px;
-            opacity: 0;
-            transition: opacity 0.3s;
-        }
-
-        .game-link:hover::before {
-            opacity: 1;
-        }
-
-        footer {
-            margin-top: 40px;
-            font-size: 0.8em;
-            color: #008800;
-        }
-
-        .glitch {
-            animation: glitch 1s linear infinite;
-        }
-
-        @keyframes glitch {
-            0% { text-shadow: 2px 0 #ff00ff, -2px 0 #00ffff; }
-            25% { text-shadow: -2px 0 #ff00ff, 2px 0 #00ffff; }
-            50% { text-shadow: 2px 0 #ff00ff, -2px 0 #00ffff; }
-            75% { text-shadow: -2px 0 #ff00ff, 2px 0 #00ffff; }
-            100% { text-shadow: 2px 0 #ff00ff, -2px 0 #00ffff; }
-        }
-    </style>
+    <title>ZombiGames - Retro Collection</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
 </head>
 <body>
     <div class="container">
-        <h1 class="glitch">ZOMBIGAMES</h1>
-        <p>SELECT YOUR GAME:</p>
-        
-        <ul class="game-list">
-            <!-- Example game links - these will be populated by JavaScript -->
-            <!-- The actual links will be generated automatically -->
-        </ul>
-        
+        <header>
+            <h1>ZombiGames</h1>
+            <p>Your Retro Arcade</p>
+        </header>
+
+        <nav class="game-list-nav">
+            <h2>Select Your Game:</h2>
+            <ul id="game-list">
+                <!-- Game links will be inserted here by JavaScript -->
+                <li class="loading">Loading games...</li>
+            </ul>
+        </nav>
+
         <footer>
-            WARNING: SYSTEM INFECTED<br>
-            © 1983 ZOMBIGAMES CORP. ALL RIGHTS RESERVED
+            <p>© <span id="year"></span> ZombiGames. Insert Coin to Continue.</p>
         </footer>
     </div>
 
     <script>
-        // Function to convert filename to display name
-        function formatDisplayName(filename) {
-            // Remove .html extension
-            let name = filename.replace('.html', '');
-            // Insert space before capital letters
-            name = name.replace(/([A-Z])/g, ' $1');
-            // Trim and capitalize first letter
-            return name.trim().charAt(0).toUpperCase() + name.trim().slice(1);
-        }
+        document.addEventListener('DOMContentLoaded', () => {
+            const gameListContainer = document.getElementById('game-list');
+            gameListContainer.innerHTML = ''; // Clear the "Loading..." message
 
-        // Function to fetch all HTML files in the directory
-        async function populateGameList() {
-            try {
-                // In a real scenario, you would fetch this from the server
-                // For this example, we'll simulate it with a list
-                const response = await fetch(window.location.href);
-                const html = await response.text();
-                
-                // Parse the HTML to find all .html files (this is simplified)
-                // Note: This approach has limitations due to browser security
-                // In a real implementation, you would need server-side code or
-                // a predefined list of games
-                
-                // For demonstration, we'll use a simulated list
-                const simulatedGames = ['MazeGame.html', 'ZombieShooter.html', 'SurvivalHorror.html', 'RetroAdventure.html'];
-                
-                const gameList = document.querySelector('.game-list');
-                
-                simulatedGames.forEach(game => {
-                    const listItem = document.createElement('li');
-                    listItem.className = 'game-item';
-                    
-                    const link = document.createElement('a');
-                    link.className = 'game-link';
-                    link.href = game;
-                    link.textContent = formatDisplayName(game);
-                    
-                    listItem.appendChild(link);
-                    gameList.appendChild(listItem);
+            // --- !!! IMPORTANT: MANUALLY UPDATE THIS LIST !!! ---
+            // Add the exact filenames of your HTML game files here.
+            const gameFiles = [
+                "MazeGame.html",
+                "SpaceInvadersClone.html",
+                "PixelPlatformer.html",
+                "RetroPong.html",
+                "SnakeGame.html"
+                // Add more game filenames like "MyCoolGame.html"
+            ];
+            // --- !!! END OF MANUAL UPDATE SECTION !!! ---
+
+
+            if (gameFiles.length === 0) {
+                const noGamesItem = document.createElement('li');
+                noGamesItem.textContent = "No games found in the list!";
+                noGamesItem.classList.add('no-games');
+                gameListContainer.appendChild(noGamesItem);
+
+            } else {
+                gameFiles.forEach(filename => {
+                    // Basic check to ensure it's likely a game file and not index.html
+                    if (filename.toLowerCase().endsWith('.html') && filename.toLowerCase() !== 'index.html') {
+
+                        // 1. Extract base name (remove .html)
+                        let baseName = filename.substring(0, filename.length - 5); // Remove .html
+
+                        // 2. Convert CamelCase/PascalCase to Title Case with spaces
+                        // Add space before capital letters (unless it's the first char), then trim.
+                        let formattedName = baseName
+                            .replace(/([A-Z])/g, ' $1') // Add space before caps
+                            .replace(/^./, (str) => str.toUpperCase()) // Ensure first letter is uppercase
+                            .trim(); // Remove leading/trailing spaces
+
+                        // Create list item and link
+                        const listItem = document.createElement('li');
+                        const link = document.createElement('a');
+                        link.href = filename;        // Link to the actual file
+                        link.textContent = formattedName; // Display the formatted name
+                        link.classList.add('game-link'); // Add class for styling
+
+                        listItem.appendChild(link);
+                        gameListContainer.appendChild(listItem);
+                    }
                 });
-                
-                // In a real implementation, you would:
-                // 1. Have a server-side script that lists all HTML files
-                // 2. Or manually maintain the list in this JavaScript
-                // 3. Or use a build process to generate this file
-                
-            } catch (error) {
-                console.error('Error populating game list:', error);
-                const gameList = document.querySelector('.game-list');
-                gameList.innerHTML = '<li>Error loading game list. Check console for details.</li>';
             }
-        }
 
-        // Populate the game list when the page loads
-        window.addEventListener('DOMContentLoaded', populateGameList);
+             // Set current year in footer
+             document.getElementById('year').textContent = new Date().getFullYear();
+        });
     </script>
 </body>
 </html>
