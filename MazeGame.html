@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Maze Game with Timer</title>
+  <style>
+    body {
+      background: #222;
+      color: white;
+      font-family: sans-serif;
+      text-align: center;
+      margin-top: 30px;
+    }
+    canvas {
+      background: #000;
+      display: block;
+      margin: 0 auto;
+      border: 4px solid #fff;
+    }
+    #message, #time {
+      font-size: 24px;
+      margin-top: 15px;
+    }
+    button {
+      margin-top: 10px;
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <h1>Random Maze Game</h1>
+  <div id="time">Time Remaining: <span id="timer">60</span>s</div>
+  <canvas id="mazeCanvas" width="300" height="300"></canvas>
+  <div id="message"></div>
+  <button onclick="generateMaze()">Generate New Maze</button>
+
+  <script>
+    const canvas = document.getElementById("mazeCanvas");
+    const ctx = canvas.getContext("2d");
+
+    const tileSize = 30;
+    const rows = 10;
+    const cols = 10;
+
+    let maze = [];
+    let player = { x: 1, y: 1 };
+    let goal = { x: 8, y: 8 }; // will be updated later
+    let timeLeft = 60;
+    let timerInterval = null;
+
+    function startTimer() {
+      clearInterval(timerInterval);
+      timerInterval = setInterval(() => {
+        timeLeft--;
+        document.getElementById("timer").textContent = timeLeft;
+        if (timeLeft <= 0) {
+          clearInterval(timerInterval);
+          document.getElementById("message").textContent = "⏰ Time's up! Game Over.";
+        }
+      }, 1000);
+    }
+
+    function generateMaze() {
+      if (timeLeft <= 0) return; // don't allow after game over
+
+      // Reset full-wall maze
+      maze = Array.from({ length: rows }, () => Array(cols).fill(1));
+
+      const stack = [];
+      const visited = new Set();
+
+      const directions = [
+        [0, -1], // up
+        [1, 0],  // right
+        [0, 1],  // down
+        [-1, 0], // left
+      ];
+
+      function getNeighbors(x, y) {
+        return directions
+          .map(([dx, dy]) => [x + dx * 2, y + dy * 2])
+          .filter(
+            ([nx, ny]) =>
+              nx >= 1 &&
+              ny >= 1 &&
+              nx < cols - 1 &&
+              ny < rows - 1 &&
+              !visited.has(`${nx},${ny}`)
+          );
+      }
+
+      function carve(x1, y1, x2, y2) {
+        maze[y1][x1] = 0;
+        maze[Math.floor((y1 + y2) / 2)][Math.floor((x1 + x2) / 2)] = 0; // break wall
+      }
+
+      const startX = 1, startY = 1;
+      visited.add(`${startX},${startY}`);
+      maze[startY][startX] = 0;
+      stack.push([startX, startY]);
+
+      while (stack.length > 0) {
+        const current = stack[stack.length - 1];
+        const neighbors = getNeighbors(...current);
+
+        if (neighbors.length === 0) {
+          stack.pop();
+        } else {
+          const [nx, ny] = neighbors[Math.floor(Math.random() * neighbors.length)];
+          visited.add(`${nx},${ny}`);
+          carve(current[0], current[1], nx, ny);
+          stack.push([nx, ny]);
+        }
+      }
+
+      // Find all walkable tiles
+      const walkableTiles = [];
+      for (let y = 1; y < rows - 1; y++) {
+        for (let x = 1; x < cols - 1; x++) {
+          if (maze[y][x] === 0) walkableTiles.push({ x, y });
+        }
+      }
+
+      // BFS to find furthest point from start
+      function bfs(startTile) {
+        const queue = [{ ...startTile, dist: 0 }];
+        const visited = new Set();
+        let maxDist = 0;
+        let furthestTile = startTile;
+
+        while (queue.length > 0) {
+          const { x, y, dist } = queue.shift();
+          const key = `${x},${y}`;
+          if (visited.has(key)) continue;
+          visited.add(key);
+
+          if (dist > maxDist) {
+            maxDist = dist;
+            furthestTile = { x, y };
+          }
+
+          directions.forEach(([dx, dy]) => {
+            const nx = x + dx, ny = y + dy;
+            if (
+              nx >= 0 &&
+              ny >= 0 &&
+              nx < cols &&
+              ny < rows &&
+              maze[ny][nx] === 0 &&
+              !visited.has(`${nx},${ny}`)
+            ) {
+              queue.push({ x: nx, y: ny, dist: dist + 1 });
+            }
+          });
+        }
+
+        return furthestTile;
+      }
+
+      // Set player and goal
+      player = { x: 1, y: 1 };
+      goal = bfs(player);
+
+      if (player.x === goal.x && player.y === goal.y) {
+        goal = walkableTiles[(walkableTiles.length * 0.75) | 0]; // fallback
+      }
+
+      maze[goal.y][goal.x] = 0;
+
+      drawMaze();
+      document.getElementById("message").textContent = "";
+    }
+
+    function drawMaze() {
+      for (let y = 0; y < rows; y++) {
+        for (let x = 0; x < cols; x++) {
+          ctx.fillStyle = maze[y][x] === 1 ? "#444" : "#222";
+          ctx.fillRect(x * tileSize, y * tileSize, tileSize, tileSize);
+        }
+      }
+
+      // Draw player
+      ctx.fillStyle = "deepskyblue";
+      ctx.fillRect(player.x * tileSize, player.y * tileSize, tileSize, tileSize);
+
+      // Draw goal
+      ctx.fillStyle = "lime";
+      ctx.fillRect(goal.x * tileSize, goal.y * tileSize, tileSize, tileSize);
+    }
+
+    function movePlayer(dx, dy) {
+      const newX = player.x + dx;
+      const newY = player.y + dy;
+
+      if (
+        newX >= 0 &&
+        newX < cols &&
+        newY >= 0 &&
+        newY < rows &&
+        maze[newY][newX] === 0 &&
+        timeLeft > 0
+      ) {
+        player.x = newX;
+        player.y = newY;
+        drawMaze();
+        checkWin();
+      }
+    }
+
+    function checkWin() {
+      if (player.x === goal.x && player.y === goal.y && timeLeft > 0) {
+        document.getElementById("message").textContent = "🎉 Goal reached!";
+        timeLeft -= 5;
+        if (timeLeft < 0) timeLeft = 0;
+        document.getElementById("timer").textContent = timeLeft;
+        setTimeout(() => {
+          generateMaze();
+        }, 500);
+      }
+    }
+
+    window.addEventListener("keydown", (e) => {
+      switch (e.key) {
+        case "ArrowUp":
+          movePlayer(0, -1);
+          break;
+        case "ArrowDown":
+          movePlayer(0, 1);
+          break;
+        case "ArrowLeft":
+          movePlayer(-1, 0);
+          break;
+        case "ArrowRight":
+          movePlayer(1, 0);
+          break;
+      }
+    });
+
+    // Start game
+    generateMaze();
+    startTimer();
+  </script>
+</body>
+</html>
