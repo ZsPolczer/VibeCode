@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zombie Runner</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #333;
+            font-family: sans-serif;
+            color: white;
+            flex-direction: column; /* Stack elements vertically */
+        }
+        canvas {
+            border: 1px solid white;
+            background-color: #5a5a5a; /* Darker grey for contrast */
+        }
+        #instructions {
+            margin-top: 15px;
+            font-size: 0.9em;
+        }
+        #controls {
+             margin-top: 5px;
+             font-size: 0.8em;
+             color: #ccc;
+        }
+    </style>
+</head>
+<body>
+    <div>
+        <canvas id="gameCanvas" width="800" height="400"></canvas>
+    </div>
+    <div id="instructions">Avoid the Zombies!</div>
+    <div id="controls">Controls: Up/Down Arrows or W/S | Restart: Enter</div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // --- Game Settings ---
+        const PLAYER_WIDTH = 25;
+        const PLAYER_HEIGHT = 40;
+        const PLAYER_COLOR = 'dodgerblue';
+        const PLAYER_SPEED = 6;
+
+        const ZOMBIE_WIDTH = 30;
+        const ZOMBIE_HEIGHT = 45;
+        const ZOMBIE_COLOR = 'limegreen';
+        const INITIAL_ZOMBIE_SPAWN_RATE = 100; // Lower is faster spawn (frames)
+        const MIN_ZOMBIE_SPAWN_RATE = 40; // Fastest spawn rate
+        const SPAWN_RATE_DECREASE = 0.1; // How much to decrease spawn rate per frame
+
+        const INITIAL_GAME_SPEED = 3;
+        const MAX_GAME_SPEED = 8;
+        const GAME_SPEED_INCREASE = 0.002; // How much speed increases per frame
+
+        const GROUND_HEIGHT = 20;
+        const GROUND_COLOR = '#444';
+
+        // --- Game State ---
+        let player;
+        let zombies;
+        let score;
+        let gameSpeed;
+        let zombieSpawnTimer;
+        let currentZombieSpawnRate;
+        let gameOver;
+        let animationFrameId;
+
+        // --- Player Input ---
+        const keys = {
+            ArrowUp: false,
+            ArrowDown: false,
+            w: false,
+            s: false,
+            Enter: false // For restart
+        };
+
+        window.addEventListener('keydown', (e) => {
+            if (keys.hasOwnProperty(e.key)) {
+                keys[e.key] = true;
+            }
+        });
+
+        window.addEventListener('keyup', (e) => {
+            if (keys.hasOwnProperty(e.key)) {
+                keys[e.key] = false;
+            }
+             // Handle restart on Enter key *up* to prevent multiple restarts
+             if (e.key === 'Enter' && gameOver) {
+                initGame();
+                gameLoop();
+            }
+        });
+
+        // --- Game Objects ---
+        function createPlayer() {
+            return {
+                x: 50,
+                y: canvas.height - GROUND_HEIGHT - PLAYER_HEIGHT - 50, // Start a bit above ground
+                width: PLAYER_WIDTH,
+                height: PLAYER_HEIGHT,
+                velocityY: 0
+            };
+        }
+
+        function createZombie() {
+            const yPos = Math.random() * (canvas.height - GROUND_HEIGHT - ZOMBIE_HEIGHT);
+            return {
+                x: canvas.width, // Start off-screen right
+                y: yPos,
+                width: ZOMBIE_WIDTH,
+                height: ZOMBIE_HEIGHT
+            };
+        }
+
+        // --- Game Logic ---
+        function updatePlayer() {
+            // Apply gravity or basic vertical movement
+            player.velocityY = 0; // Reset velocity each frame unless key is pressed
+
+            if (keys.ArrowUp || keys.w) {
+                player.velocityY = -PLAYER_SPEED;
+            }
+            if (keys.ArrowDown || keys.s) {
+                player.velocityY = PLAYER_SPEED;
+            }
+
+            player.y += player.velocityY;
+
+            // Keep player within bounds (above ground, below ceiling)
+            if (player.y < 0) {
+                player.y = 0;
+            }
+            if (player.y + player.height > canvas.height - GROUND_HEIGHT) {
+                player.y = canvas.height - GROUND_HEIGHT - player.height;
+            }
+        }
+
+        function updateZombies() {
+            zombieSpawnTimer++;
+
+            // Spawn new zombies
+            if (zombieSpawnTimer >= currentZombieSpawnRate) {
+                zombies.push(createZombie());
+                zombieSpawnTimer = 0;
+
+                // Increase difficulty slightly by reducing spawn interval
+                 if (currentZombieSpawnRate > MIN_ZOMBIE_SPAWN_RATE) {
+                    currentZombieSpawnRate -= SPAWN_RATE_DECREASE;
+                 } else {
+                     currentZombieSpawnRate = MIN_ZOMBIE_SPAWN_RATE; // Cap it
+                 }
+            }
+
+            // Move existing zombies left
+            for (let i = zombies.length - 1; i >= 0; i--) {
+                zombies[i].x -= gameSpeed;
+
+                // Remove zombies that go off-screen left
+                if (zombies[i].x + zombies[i].width < 0) {
+                    zombies.splice(i, 1);
+                    score++; // Score for each zombie passed
+                }
+            }
+        }
+
+        function checkCollisions() {
+            for (const zombie of zombies) {
+                // Simple AABB collision detection
+                if (
+                    player.x < zombie.x + zombie.width &&
+                    player.x + player.width > zombie.x &&
+                    player.y < zombie.y + zombie.height &&
+                    player.y + player.height > zombie.y
+                ) {
+                    gameOver = true;
+                    break; // Exit loop once collision found
+                }
+            }
+        }
+
+        function increaseDifficulty() {
+             if (gameSpeed < MAX_GAME_SPEED) {
+                gameSpeed += GAME_SPEED_INCREASE;
+             } else {
+                 gameSpeed = MAX_GAME_SPEED; // Cap the speed
+             }
+        }
+
+
+        // --- Drawing ---
+        function clearCanvas() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            // Draw background color (redundant with CSS but good practice)
+            ctx.fillStyle = '#5a5a5a';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+
+        function drawGround() {
+            ctx.fillStyle = GROUND_COLOR;
+            ctx.fillRect(0, canvas.height - GROUND_HEIGHT, canvas.width, GROUND_HEIGHT);
+        }
+
+        function drawPlayer() {
+            ctx.fillStyle = PLAYER_COLOR;
+            ctx.fillRect(player.x, player.y, player.width, player.height);
+            // Simple "eye"
+            ctx.fillStyle = 'white';
+            ctx.fillRect(player.x + player.width * 0.6, player.y + player.height * 0.2, 5, 5);
+        }
+
+        function drawZombies() {
+            ctx.fillStyle = ZOMBIE_COLOR;
+            zombies.forEach(zombie => {
+                ctx.fillRect(zombie.x, zombie.y, zombie.width, zombie.height);
+                // Simple "eye"
+                ctx.fillStyle = 'red';
+                ctx.fillRect(zombie.x + zombie.width * 0.2, zombie.y + zombie.height * 0.2, 5, 5);
+            });
+        }
+
+        function drawScore() {
+            ctx.fillStyle = 'white';
+            ctx.font = '20px Arial';
+            ctx.textAlign = 'left';
+            ctx.fillText(`Score: ${score}`, 10, 30);
+        }
+
+         function drawGameOver() {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.7)'; // Semi-transparent overlay
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.fillStyle = 'red';
+            ctx.font = '50px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('GAME OVER', canvas.width / 2, canvas.height / 2 - 30);
+
+            ctx.fillStyle = 'white';
+            ctx.font = '20px Arial';
+            ctx.fillText(`Final Score: ${score}`, canvas.width / 2, canvas.height / 2 + 20);
+            ctx.fillText('Press Enter to Restart', canvas.width / 2, canvas.height / 2 + 60);
+        }
+
+
+        // --- Game Loop ---
+        function gameLoop() {
+            if (gameOver) {
+                drawGameOver();
+                // Stop requesting new frames, wait for Enter key press handled in event listener
+                return;
+            }
+
+            // --- Update ---
+            updatePlayer();
+            updateZombies();
+            checkCollisions();
+            increaseDifficulty(); // Gradually increase speed
+
+            // --- Draw ---
+            clearCanvas();
+            drawGround();
+            drawPlayer();
+            drawZombies();
+            drawScore();
+
+            // Request next frame
+            animationFrameId = requestAnimationFrame(gameLoop);
+        }
+
+        // --- Initialization ---
+        function initGame() {
+            player = createPlayer();
+            zombies = [];
+            score = 0;
+            gameSpeed = INITIAL_GAME_SPEED;
+            zombieSpawnTimer = 0;
+            currentZombieSpawnRate = INITIAL_ZOMBIE_SPAWN_RATE;
+            gameOver = false;
+
+             // Clear any potential previous animation frame requests
+             if (animationFrameId) {
+                 cancelAnimationFrame(animationFrameId);
+             }
+        }
+
+        // --- Start Game ---
+        initGame();
+        gameLoop(); // Start the loop!
+
+    </script>
+</body>
+</html>
