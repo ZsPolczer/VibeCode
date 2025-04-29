@@ -1,59 +1,68 @@
-/* Basic Reset & Retro Font */
-body {
-    background-color: #000000; /* Black background */
-    color: #00ff00; /* Bright green text */
-    font-family: 'Press Start 2P', cursive; /* Pixel font */
+/* --- Modern, Realistic, Amazing Style --- */
+
+/* Basic Reset & Font */
+*, *::before, *::after {
+    box-sizing: border-box;
     margin: 0;
     padding: 0;
-    font-size: 16px; /* Base pixel font size */
+}
+
+body {
+    font-family: 'Poppins', sans-serif; /* Modern sans-serif font */
     line-height: 1.6;
-    text-shadow: 0 0 5px #00ff00, 0 0 10px #00ff00; /* Green glow */
-}
-
-a {
-    color: #00ffff; /* Cyan links */
-    text-decoration: none;
-    transition: all 0.3s ease; /* Smooth transitions */
-    text-shadow: 0 0 5px #00ffff, 0 0 10px #00ffff; /* Cyan glow */
-}
-
-a:hover, a:focus {
-    color: #ffff00; /* Yellow on hover/focus */
-    background-color: rgba(0, 255, 255, 0.1); /* Subtle cyan background */
-    text-shadow: 0 0 5px #ffff00, 0 0 10px #ffff00; /* Yellow glow */
-    outline: 2px dashed #ffff00; /* Dashed outline on focus */
-    outline-offset: 3px;
+    color: #e0e0e0; /* Light grey text for dark background */
+    /* Subtle gradient background for depth */
+    background: linear-gradient(135deg, #2c3e50 0%, #1a252f 100%);
+    background-attachment: fixed; /* Keep gradient fixed during scroll */
+    min-height: 100vh; /* Ensure body takes full viewport height */
+    display: flex; /* Helps center container vertically if content is short */
+    justify-content: center;
+    align-items: center; /* Center container */
+    padding: 2rem 1rem; /* Add padding for smaller screens */
+    -webkit-font-smoothing: antialiased; /* Smoother font rendering */
+    -moz-osx-font-smoothing: grayscale;
 }
 
 /* Layout Container */
 .container {
-    max-width: 800px;
-    margin: 2rem auto; /* Center the content with some margin */
-    padding: 2rem;
-    border: 3px solid #ff00ff; /* Magenta border */
-    box-shadow: 0 0 15px #ff00ff, inset 0 0 10px #ff00ff; /* Magenta glow */
-    background-color: rgba(0, 0, 0, 0.8); /* Slightly transparent black bg */
+    max-width: 900px;
+    width: 100%; /* Responsive width */
+    margin: 2rem auto; /* Center horizontally */
+    padding: 2.5rem 3rem;
+    background-color: rgba(255, 255, 255, 0.05); /* Subtle glassy background */
+    backdrop-filter: blur(10px); /* Frosted glass effect (browser support varies) */
+    -webkit-backdrop-filter: blur(10px); /* Safari */
+    border-radius: 15px; /* Rounded corners */
+    border: 1px solid rgba(255, 255, 255, 0.1); /* Subtle border */
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3); /* Soft shadow for depth */
+    overflow: hidden; /* Ensure content respects border radius */
 }
 
 /* Header */
 header {
     text-align: center;
-    margin-bottom: 2rem;
-    border-bottom: 2px dashed #00ff00; /* Green dashed line */
-    padding-bottom: 1rem;
+    margin-bottom: 2.5rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.15); /* Subtle separator */
 }
 
 h1 {
-    font-size: 2.5rem; /* Larger title */
-    color: #ff00ff; /* Magenta title */
+    font-size: 2.8rem; /* Larger, impactful title */
+    font-weight: 700; /* Bold */
+    color: #ffffff; /* White title */
     margin-bottom: 0.5rem;
-    text-shadow: 0 0 8px #ff00ff, 0 0 15px #ff00ff; /* Magenta glow */
-    letter-spacing: 2px;
+    letter-spacing: 1px;
+    /* Subtle text gradient */
+    background: linear-gradient(90deg, #ececec, #a7a7a7);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+
 }
 
 header p {
-    font-size: 1rem;
-    color: #00ff00; /* Green subtitle */
+    font-size: 1.1rem;
+    font-weight: 300; /* Lighter weight */
+    color: #b0c4de; /* Light steel blue for subtitle */
 }
 
 /* Game List Navigation */
@@ -62,67 +71,69 @@ header p {
 }
 
 h2 {
-    font-size: 1.5rem;
-    margin-bottom: 1rem;
-    color: #ffff00; /* Yellow section title */
-    text-shadow: 0 0 5px #ffff00;
+    font-size: 1.8rem;
+    font-weight: 600;
+    color: #ffffff;
     text-align: center;
+    margin-bottom: 1.8rem;
 }
 
 #game-list {
     list-style: none; /* Remove default bullet points */
     padding: 0;
-    margin: 0;
-    text-align: center; /* Center list items */
+    margin: 0 auto; /* Center the list container if needed */
+    max-width: 600px; /* Limit width of the list for better centering */
 }
 
 #game-list li {
-    margin-bottom: 0.8rem; /* Space between game links */
+    margin-bottom: 1rem; /* Space between game links */
+    transition: transform 0.2s ease-out; /* Add transition to the list item itself */
+}
+
+#game-list li:hover {
+     transform: scale(1.03); /* Slightly scale up the list item on hover */
 }
 
 .game-link {
-    display: inline-block; /* Allows padding and centering */
-    padding: 0.5rem 1rem;
-    border: 1px solid #00ffff; /* Cyan border */
-    background-color: rgba(0, 0, 0, 0.5); /* Dark background for link */
+    display: block; /* Make link take full width of li */
+    padding: 1rem 1.5rem;
+    background-color: rgba(0, 0, 0, 0.2); /* Darker, transparent background */
+    color: #e0e0e0; /* Light text color */
+    text-decoration: none;
+    font-size: 1.1rem;
+    font-weight: 400;
+    text-align: center;
+    border-radius: 8px; /* Rounded corners for links */
+    border: 1px solid transparent; /* Placeholder for hover effect */
+    transition: all 0.3s ease; /* Smooth transitions for multiple properties */
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2); /* Subtle shadow */
 }
 
 .game-link:hover, .game-link:focus {
-    transform: scale(1.05); /* Slightly enlarge on hover */
-    box-shadow: 0 0 10px #ffff00; /* Yellow glow on hover */
+    background-color: rgba(255, 255, 255, 0.15); /* Lighter background on hover */
+    color: #ffffff; /* White text on hover */
+    border-color: rgba(255, 255, 255, 0.3); /* Subtle border highlight */
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3); /* Enhanced shadow */
+    outline: none; /* Remove default focus outline */
+    transform: translateY(-2px); /* Subtle lift effect */
 }
 
 /* Loading/Empty State */
 .loading, .no-games {
-    font-style: italic;
-    color: #aaaaaa; /* Dimmer color */
-    text-shadow: none;
     text-align: center;
+    font-style: italic;
+    color: #a0a0a0; /* Dimmer color */
+    padding: 1rem;
 }
 
 /* Footer */
 footer {
-    margin-top: 2rem;
-    padding-top: 1rem;
-    border-top: 2px dashed #00ff00; /* Green dashed line */
+    margin-top: 2.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.15); /* Subtle separator */
     text-align: center;
-    font-size: 0.8rem;
-    color: #aaaaaa; /* Dimmer grey */
-    text-shadow: none;
+    font-size: 0.9rem;
+    color: #a0a0a0; /* Dim grey */
 }
 
-/* Optional: Subtle Scanline Effect */
-body::before {
-    content: " ";
-    display: block;
-    position: fixed; /* Use fixed to cover viewport */
-    top: 0;
-    left: 0;
-    bottom: 0;
-    right: 0;
-    background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
-    z-index: 2; /* Place on top */
-    background-size: 100% 4px, 6px 100%; /* Size of lines */
-    pointer-events: none; /* Allow clicks through */
-    opacity: 0.2; /* Make it subtle */
-}
+/* --- End of Modern Style --- */

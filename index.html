@@ -3,17 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ZombiGames - Retro Collection</title>
+    <title>ZombiGames - Modern Collection</title>
+    <!-- Link the NEW style.css -->
     <link rel="stylesheet" href="style.css">
+    <!-- Link a modern Google Font (e.g., Poppins) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
     <div class="container">
         <header>
             <h1>ZombiGames</h1>
-            <p>Your Retro Arcade</p>
+            <p>Your Curated Game Collection</p>
         </header>
 
         <nav class="game-list-nav">
@@ -25,7 +27,7 @@
         </nav>
 
         <footer>
-            <p>© <span id="year"></span> ZombiGames. Insert Coin to Continue.</p>
+            <p>© <span id="year"></span> ZombiGames. All rights reserved.</p>
         </footer>
     </div>
 
@@ -38,7 +40,7 @@
             // Add the exact filenames of your HTML game files here.
             const gameFiles = [
                 "MazeGame.html",
-                "ZombieRun.html"
+                "ZombieRun.html" // Example
                 // Add more game filenames like "MyCoolGame.html"
             ];
             // --- !!! END OF MANUAL UPDATE SECTION !!! ---
@@ -46,7 +48,7 @@
 
             if (gameFiles.length === 0) {
                 const noGamesItem = document.createElement('li');
-                noGamesItem.textContent = "No games found in the list!";
+                noGamesItem.textContent = "No games found. Update the list in index.html!";
                 noGamesItem.classList.add('no-games');
                 gameListContainer.appendChild(noGamesItem);
 
@@ -59,7 +61,6 @@
                         let baseName = filename.substring(0, filename.length - 5); // Remove .html
 
                         // 2. Convert CamelCase/PascalCase to Title Case with spaces
-                        // Add space before capital letters (unless it's the first char), then trim.
                         let formattedName = baseName
                             .replace(/([A-Z])/g, ' $1') // Add space before caps
                             .replace(/^./, (str) => str.toUpperCase()) // Ensure first letter is uppercase
