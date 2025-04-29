@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Simple Maze Game</title>
+  <style>
+    body {
+      background: #222;
+      color: white;
+      font-family: sans-serif;
+      text-align: center;
+      margin-top: 30px;
+    }
+    canvas {
+      background: #000;
+      display: block;
+      margin: 0 auto;
+      border: 4px solid #fff;
+    }
+    #message {
+      font-size: 24px;
+      margin-top: 15px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Maze Game</h1>
+  <canvas id="mazeCanvas" width="300" height="300"></canvas>
+  <div id="message"></div>
+
+  <script>
+    const canvas = document.getElementById("mazeCanvas");
+    const ctx = canvas.getContext("2d");
+
+    const tileSize = 30;
+    const rows = 10;
+    const cols = 10;
+
+    // Maze layout: 0 = path, 1 = wall
+    const maze = [
+      [0, 1, 0, 0, 0, 0, 1, 0, 1, 0],
+      [0, 1, 0, 1, 1, 0, 1, 0, 1, 0],
+      [0, 0, 0, 1, 1, 0, 0, 0, 1, 0],
+      [0, 1, 0, 0, 0, 1, 1, 0, 1, 0],
+      [0, 1, 1, 1, 0, 1, 1, 0, 1, 0],
+      [0, 0, 0, 1, 0, 0, 0, 0, 1, 0],
+      [0, 1, 0, 1, 1, 1, 1, 0, 1, 0],
+      [0, 1, 0, 0, 0, 0, 1, 0, 0, 0],
+      [0, 1, 1, 1, 1, 0, 1, 1, 1, 1],
+      [0, 0, 0, 0, 1, 0, 0, 0, 0, 0]
+    ];
+
+    const player = { x: 0, y: 0 };
+    const goal = { x: 9, y: 9 };
+
+    function drawMaze() {
+      for (let y = 0; y < rows; y++) {
+        for (let x = 0; x < cols; x++) {
+          if (maze[y][x] === 1) {
+            ctx.fillStyle = "#444"; // Wall
+          } else {
+            ctx.fillStyle = "#222"; // Path
+          }
+          ctx.fillRect(x * tileSize, y * tileSize, tileSize, tileSize);
+        }
+      }
+
+      // Draw goal
+      ctx.fillStyle = "green";
+      ctx.fillRect(goal.x * tileSize, goal.y * tileSize, tileSize, tileSize);
+
+      // Draw player
+      ctx.fillStyle = "deepskyblue";
+      ctx.fillRect(player.x * tileSize, player.y * tileSize, tileSize, tileSize);
+    }
+
+    function movePlayer(dx, dy) {
+      const newX = player.x + dx;
+      const newY = player.y + dy;
+
+      if (
+        newX >= 0 &&
+        newX < cols &&
+        newY >= 0 &&
+        newY < rows &&
+        maze[newY][newX] === 0
+      ) {
+        player.x = newX;
+        player.y = newY;
+        drawMaze();
+        checkWin();
+      }
+    }
+
+    function checkWin() {
+      if (player.x === goal.x && player.y === goal.y) {
+        document.getElementById("message").textContent = "🎉 You reached the goal!";
+      }
+    }
+
+    window.addEventListener("keydown", (e) => {
+      switch (e.key) {
+        case "ArrowUp":
+          movePlayer(0, -1);
+          break;
+        case "ArrowDown":
+          movePlayer(0, 1);
+          break;
+        case "ArrowLeft":
+          movePlayer(-1, 0);
+          break;
+        case "ArrowRight":
+          movePlayer(1, 0);
+          break;
+      }
+    });
+
+    drawMaze();
+  </script>
+</body>
+</html>
