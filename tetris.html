@@ -1,77 +1,11 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <title>Retro Games - Play Tetris</title>
-  <style>
-    body {
-      background: black;
-      color: lime;
-      font-family: 'Courier New', monospace;
-      text-align: center;
-      margin: 0;
-      padding: 0;
-    }
-
-    h1 {
-      font-size: 36px;
-      text-shadow: 0 0 5px cyan, 0 0 10px lime;
-    }
-
-    #landing, #tetris {
-      display: none;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      min-height: 100vh;
-    }
-
-    #landing.active, #tetris.active {
-      display: flex;
-    }
-
-    button {
-      background: cyan;
-      border: none;
-      color: black;
-      font-size: 20px;
-      padding: 15px 30px;
-      cursor: pointer;
-      margin-top: 20px;
-      border-radius: 5px;
-    }
-
-    canvas {
-      border: 4px solid cyan;
-      margin-top: 20px;
-      background: black;
-    }
-  </style>
-</head>
-<body>
-
-  <!-- Landing Page -->
-  <section id="landing" class="active">
-    <h1>🎮 Retro Games</h1>
-    <button onclick="startTetris()">Play Tetris</button>
-  </section>
-
-  <!-- Tetris Game -->
-  <section id="tetris">
-    <h1>🧩 Tetris Game</h1>
-    <div>Score: <span id="score">0</span></div>
-    <canvas id="tetrisCanvas" width="240" height="400"></canvas>
-    <button onclick="backToLanding()">Back to Menu</button>
-  </section>
-
-  <script>
+<script>
     const canvas = document.getElementById("tetrisCanvas");
     const ctx = canvas.getContext("2d");
-
+  
     const COLS = 10;
     const ROWS = 20;
     const BLOCK_SIZE = 24;
-
+  
     const COLORS = [
       null,
       "cyan",    // I
@@ -82,7 +16,7 @@
       "blue",    // J
       "orange"   // L
     ];
-
+  
     const SHAPES = [
       [[1]][[1]][[1]][[1]], // I
       [[2, 2], [2, 2]], // O
@@ -92,43 +26,41 @@
       [[6, 0, 0], [6, 6, 6]], // J
       [[0, 0, 7], [7, 7, 7]]  // L
     ];
-
+  
     let board = Array.from({ length: ROWS }, () => Array(COLS).fill(0));
     let currentPiece = null;
-    let score = 0;
-    let intervalId = null;
-
+  
     function drawBlock(x, y, color) {
       ctx.fillStyle = color || "black";
       ctx.fillRect(x * BLOCK_SIZE, y * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
-      ctx.strokeStyle = "black";
+      ctx.strokeStyle = "#000";
       ctx.strokeRect(x * BLOCK_SIZE, y * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
     }
-
+  
     function drawBoard() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-
+  
       for (let y = 0; y < ROWS; y++) {
         for (let x = 0; x < COLS; x++) {
           drawBlock(x, y, COLORS[board[y][x]]);
         }
       }
-
+  
       if (currentPiece) {
         drawPiece(currentPiece);
       }
     }
-
+  
     function newPiece() {
       const type = Math.floor(Math.random() * SHAPES.length);
       return {
         type: type,
         shape: SHAPES[type],
-        x: Math.floor((COLS / 2)) - 1,
+        x: 4, // Start in middle
         y: 0
       };
     }
-
+  
     function drawPiece(piece) {
       piece.shape.forEach((row, dy) => {
         row.forEach((val, dx) => {
@@ -138,110 +70,45 @@
         });
       });
     }
-
-    function collide(piece) {
-      return piece.shape.some((row, dy) =>
-        row.some((val, dx) =>
-          val &&
-          (piece.x + dx < 0 ||
-           piece.x + dx >= COLS ||
-           piece.y + dy >= ROWS ||
-           board[piece.y + dy][piece.x + dx])
-        )
-      );
-    }
-
-    function merge(piece) {
-      piece.shape.forEach((row, dy) => {
-        row.forEach((val, dx) => {
-          if (val) {
-            board[piece.y + dy][piece.x + dx] = val;
-          }
-        });
-      });
-    }
-
-    function rotate(matrix) {
-      return matrix[0].map((_, i) => matrix.map(row => row[i])).reverse();
-    }
-
-    function clearLines() {
-      let linesCleared = 0;
-      for (let y = ROWS - 1; y >= 0; y--) {
-        if (board[y].every(cell => cell !== 0)) {
-          board.splice(y, 1);
-          board.unshift(Array(COLS).fill(0));
-          linesCleared++;
-          y++;
-        }
-      }
-      score += linesCleared * 100;
-      document.getElementById("score").textContent = score;
-    }
-
-    function update() {
-      currentPiece.y++;
-      if (collide(currentPiece)) {
-        currentPiece.y--;
-        merge(currentPiece);
-        clearLines();
-        currentPiece = newPiece();
-        if (collide(currentPiece)) {
-          alert("💥 Game Over! Final Score: " + score);
-          resetGame();
-        }
-      }
-      drawBoard();
-    }
-
-    function resetGame() {
-      board = Array.from({ length: ROWS }, () => Array(COLS).fill(0));
-      score = 0;
-      document.getElementById("score").textContent = score;
-      currentPiece = newPiece();
-      drawBoard();
-    }
-
-    document.addEventListener("keydown", e => {
-      if (!currentPiece) return;
-
-      let moved = false;
-      if (e.key === "ArrowLeft") {
-        currentPiece.x--;
-        if (collide(currentPiece)) currentPiece.x++;
-      } else if (e.key === "ArrowRight") {
-        currentPiece.x++;
-        if (collide(currentPiece)) currentPiece.x--;
-      } else if (e.key === "ArrowDown") {
-        currentPiece.y++;
-        if (collide(currentPiece)) currentPiece.y--;
-      } else if (e.key === "ArrowUp") {
-        const rotated = rotate(currentPiece.shape);
-        currentPiece.shape = rotated;
-        if (collide(currentPiece)) {
-          currentPiece.shape = rotate(rotated);
-          currentPiece.shape = rotate(rotated);
-          currentPiece.shape = rotate(rotated); // undo rotation
-        }
-      }
-
-      drawBoard(); //dddddd
-    });
-
+  
     function startTetris() {
       document.getElementById("landing").classList.remove("active");
       document.getElementById("tetris").classList.add("active");
-      resetGame();
+  
       currentPiece = newPiece();
-      clearInterval(intervalId);
-      intervalId = setInterval(update, 400);
+      drawBoard();
+  
+      setInterval(() => {
+        currentPiece.y++;
+        drawBoard();
+      }, 500);
     }
-
+  
     function backToLanding() {
-      clearInterval(intervalId);
       document.getElementById("tetris").classList.remove("active");
       document.getElementById("landing").classList.add("active");
     }
+  
+    document.addEventListener("keydown", e => {
+      if (!currentPiece) return;
+  
+      if (e.key === "ArrowLeft") {
+        currentPiece.x--;
+      } else if (e.key === "ArrowRight") {
+        currentPiece.x++;
+      } else if (e.key === "ArrowUp") {
+        const rotated = currentPiece.shape[0].map((_, i) =>
+          currentPiece.shape.map(row => row[i])
+        ).reverse();
+        currentPiece.shape = rotated;
+      }
+  
+      drawBoard();
+    });
+  
+    // Manual draw once to confirm blocks appear
+    window.onload = () => {
+      currentPiece = newPiece();
+      drawBoard();
+    };
   </script>
-</body>
-</html>
