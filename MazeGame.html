@@ -5,11 +5,12 @@
   <title>90s Retro Maze Game</title>
   <style>
     body {
+      margin: 0;
       background: black;
       color: lime;
       font-family: 'Courier New', monospace;
       text-align: center;
-      margin-top: 20px;
+      padding-top: 20px;
     }
 
     h1 {
@@ -34,6 +35,16 @@
       margin-top: 10px;
       color: yellow;
     }
+
+    #confettiCanvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      pointer-events: none;
+      z-index: 9999;
+    }
   </style>
 </head>
 <body>
@@ -46,14 +57,14 @@
   <div id="message"></div>
 
   <!-- Confetti Canvas -->
-  <canvas id="confettiCanvas" style="position:fixed; top:0; left:0; pointer-events:none;"></canvas>
+  <canvas id="confettiCanvas"></canvas>
 
   <!-- Winning Sound -->
-  <audio id="winSound" src="https://www.soundjay.com/buttons/sounds/button-16.mp3"></audio>
+  <audio id="winSound" src="https://www.soundjay.com/buttons/sounds/button-16.mp3" preload="auto"></audio>
 
   <script>
-    const confettiCtx = document.getElementById("confettiCanvas").getContext("2d");
     const confettiCanvas = document.getElementById("confettiCanvas");
+    const confettiCtx = confettiCanvas.getContext("2d");
     confettiCanvas.width = window.innerWidth;
     confettiCanvas.height = window.innerHeight;
 
@@ -211,18 +222,24 @@
     }
 
     function drawMaze() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
       for (let y = 0; y < rows; y++) {
         for (let x = 0; x < cols; x++) {
-          ctx.fillStyle = maze[y][x] === 1 ? "#111" : "#000";
+          if (maze[y][x] === 1) {
+            ctx.fillStyle = "#444"; // Wall
+          } else {
+            ctx.fillStyle = "#000"; // Path
+          }
           ctx.fillRect(x * tileSize, y * tileSize, tileSize, tileSize);
         }
       }
 
-      // Draw walls
-      ctx.fillStyle = "#555";
+      // Redraw walls for visibility
       for (let y = 0; y < rows; y++) {
         for (let x = 0; x < cols; x++) {
           if (maze[y][x] === 1) {
+            ctx.fillStyle = "#555";
             ctx.fillRect(x * tileSize, y * tileSize, tileSize, tileSize);
           }
         }
@@ -273,10 +290,10 @@
     }
 
     function showConfetti() {
-      const confettiPieces = [];
+      const pieces = [];
 
       for (let i = 0; i < 100; i++) {
-        confettiPieces.push({
+        pieces.push({
           x: Math.random() * confettiCanvas.width,
           y: Math.random() * confettiCanvas.height - confettiCanvas.height,
           radius: Math.random() * 5 + 3,
@@ -286,11 +303,11 @@
         });
       }
 
-      function animateConfetti() {
+      function animate() {
         confettiCtx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
         let stillFalling = false;
 
-        for (const p of confettiPieces) {
+        for (const p of pieces) {
           p.y += p.dy;
           p.x += p.dx;
           p.dy += 0.05;
@@ -304,10 +321,10 @@
           }
         }
 
-        if (stillFalling) requestAnimationFrame(animateConfetti);
+        if (stillFalling) requestAnimationFrame(animate);
       }
 
-      animateConfetti();
+      animate();
     }
 
     window.addEventListener("keydown", (e) => {
