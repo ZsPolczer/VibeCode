@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Elemental Collapse</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700&family=Cousine+Mono&display=swap" rel="stylesheet">
+  <style>
+    body {
+      background: linear-gradient(to bottom, #1a1a2e, #0f0f23); /* Dark mystical gradient */
+      color: #a0a0a0; /* Soft gray text */
+      font-family: 'Cousine Mono', monospace; /* Readable monospace for info */
+      text-align: center;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start; /* Align items to the top */
+      min-height: 100vh;
+      overflow-y: auto; /* Allow scrolling if content overflows */
+      padding-top: 20px; /* Add some space at the top */
+      padding-bottom: 20px; /* Add some space at the bottom */
+    }
+
+    h1 {
+       color: #e0e0ff; /* Lighter blueish-white */
+       font-family: 'Cinzel Decorative', cursive; /* Decorative font for title */
+       font-size: 2.5em;
+       text-shadow: 0 0 10px rgba(0, 255, 255, 0.5); /* Cyan glow */
+       margin-bottom: 20px;
+       margin-top: 0; /* Remove default h1 top margin */
+    }
+
+    #game-info, #next-piece-info {
+        color: #c0c0c0; /* Light gray */
+        font-size: 1.1em;
+        margin-bottom: 8px;
+        min-height: 1.5em;
+        background-color: rgba(0, 0, 0, 0.3); /* Semi-transparent dark background */
+        padding: 5px 15px;
+        border-radius: 5px;
+        border: 1px solid rgba(64, 64, 64, 0.5);
+    }
+
+     #next-piece-info {
+        font-size: 1em;
+     }
+
+
+    canvas {
+      border: 4px solid #00ffff; /* Cyan border */
+      display: block;
+      margin: 20px auto; /* Space above and below canvas */
+      background-color: rgba(0, 0, 0, 0.5); /* Semi-transparent dark board background */
+      box-shadow: 0 0 20px rgba(0, 255, 255, 0.3); /* Subtle cyan glow around board */
+    }
+
+    #game-over {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(15, 15, 35, 0.95); /* Very dark, slightly blueish */
+        color: #e0e0ff;
+        font-family: 'Cinzel Decorative', cursive;
+        font-size: 3em;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        z-index: 10;
+        visibility: hidden;
+        text-shadow: 0 0 15px rgba(255, 50, 50, 0.8); /* Reddish glow for game over */
+    }
+
+    #game-over span {
+        font-size: 0.6em; /* Smaller text for final score */
+        margin-top: 10px;
+        font-family: 'Cousine Mono', monospace; /* Use readable font for score */
+        text-shadow: none; /* No glow on score text */
+    }
+
+    #game-over button {
+        margin-top: 30px;
+        padding: 12px 25px;
+        font-size: 0.7em;
+        cursor: pointer;
+        background-color: #00ffff; /* Cyan button */
+        color: #0f0f23; /* Dark text */
+        border: none;
+        border-radius: 5px;
+        font-family: 'Cousine Mono', monospace;
+        transition: background-color 0.3s ease, transform 0.1s ease;
+    }
+
+    #game-over button:hover {
+        background-color: #00e0e0; /* Slightly darker cyan on hover */
+    }
+
+     #game-over button:active {
+        transform: scale(0.98); /* Slight press effect */
+    }
+
+
+    /* Element specific colors for text display */
+    .element-color-1 { color: #00ffff; } /* Cyan - Water */
+    .element-color-2 { color: #ff6600; } /* Orange - Fire (slightly brighter) */
+    .element-color-3 { color: #a0522d; } /* Sienna - Earth (slightly lighter) */
+    .element-color-4 { color: #ffffff; } /* White - Air (contrasts dark background) */
+    .element-color-5 { color: #add8e6; } /* LightBlue - Ice */
+
+  </style>
+</head>
+<body>
+  <h1>Elemental Collapse</h1>
+  <!-- Updated info display text -->
+  <div id="game-info">Level: 1 | Lines: 0 | Score: 0</div>
+  <div id="next-piece-info">Next: <span id="next-piece-element"></span></div>
+
+  <canvas id="tetrisCanvas" width="240" height="480"></canvas>
+
+  <div id="game-over">
+      Game Over!<br>
+      <span id="final-score"></span>
+      <button onclick="window.startTetris()">Play Again?</button>
+  </div>
+
+  <script>
+    // Get canvas and context
+    const canvas = document.getElementById("tetrisCanvas");
+    const ctx = canvas.getContext("2d");
+
+    const COLS = 10;
+    const ROWS = 20;
+    const BLOCK_SIZE = 24;
+
+    canvas.width = COLS * BLOCK_SIZE;
+    canvas.height = ROWS * BLOCK_SIZE;
+
+    // Element definitions (using numbers for board representation)
+    const ELEMENTS = {
+        EMPTY: 0,
+        WATER: 1,
+        FIRE: 2,
+        EARTH: 3,
+        AIR: 4,
+        ICE: 5,
+    };
+
+    // Mapping element index to properties (including symbols)
+    const ELEMENT_PROPERTIES = [
+      { name: 'Empty', color: null, class: '', symbol: '' }, // EMPTY
+      { name: 'Water', color: '#00ffff', class: 'element-color-1', symbol: '💧' }, // Water Droplet
+      { name: 'Fire', color: '#ff6600', class: 'element-color-2', symbol: '🔥' },   // Fire Emoji
+      { name: 'Earth', color: '#a0522d', class: 'element-color-3', symbol: '🌍' }, // Earth Globe (Simple circle '●' also works)
+      { name: 'Air', color: '#ffffff', class: 'element-color-4', symbol: '💨' },   // Dashing Away (Wind) - ☁️ (Cloud) is another option
+      { name: 'Ice', color: '#add8e6', class: 'element-color-5', symbol: '❄️' },   // Snowflake
+      // NOTE: Emoji and some Unicode symbols might have varying appearance across browsers/OS.
+      // Test these symbols thoroughly on target devices. Simple geometric shapes or
+      // characters from a specific web font might be more consistent.
+      // Alternative simple symbols: W: ~, F:▲, E:●, A:--, I:*
+    ];
+
+
+    // Standard Tetris shapes (value 1 means solid, 0 means empty)
+    const SHAPES = [
+      [[0, 0, 0, 0], [1, 1, 1, 1], [0, 0, 0, 0], [0, 0, 0, 0]], // I
+      [[1, 1], [1, 1]],                                          // O
+      [[0, 1, 0], [1, 1, 1], [0, 0, 0]],                         // T
+      [[0, 1, 1], [1, 1, 0], [0, 0, 0]],                         // S
+      [[1, 1, 0], [0, 1, 1], [0, 0, 0]],                         // Z
+      [[1, 0, 0], [1, 1, 1], [0, 0, 0]],                         // J
+      [[0, 0, 1], [1, 1, 1], [0, 0, 0]]                          // L
+    ];
+
+
+    // --- Game State ---
+    let board = Array.from({ length: ROWS }, () => Array(COLS).fill(ELEMENTS.EMPTY));
+    let currentPiece = null;
+    let nextPiece = null;
+    let score = 0;
+    let level = 1; // Level derived from lines cleared for display/scoring
+    let linesClearedTotal = 0;
+
+    // Difficulty settings (speed increases per LINE cleared)
+    let initialDropInterval = 1000; // Base speed at 0 lines cleared
+    let speedDecreasePerLine = 10; // How much faster per line cleared (milliseconds)
+    let minimumDropInterval = 100; // Fastest possible speed
+
+    let dropInterval = initialDropInterval; // Current drop interval
+
+
+    let gameLoopId;
+    let lastTime = 0;
+
+    const gameInfoDisplay = document.getElementById('game-info');
+    const nextPieceInfoDisplay = document.getElementById('next-piece-element');
+    const gameOverDisplay = document.getElementById('game-over');
+    const finalScoreDisplay = document.getElementById('final-score');
+
+
+    // --- Core Drawing Functions ---
+
+    function drawBlock(x, y, elementIndex) {
+      if (x < 0 || x >= COLS || y < 0 || y >= ROWS) {
+          return;
+      }
+      if (elementIndex === ELEMENTS.EMPTY) return;
+
+      const props = ELEMENT_PROPERTIES[elementIndex];
+      const color = props.color;
+      const symbol = props.symbol; // Use symbol instead of icon
+
+      // Draw the block background
+      ctx.fillStyle = color;
+      ctx.fillRect(x * BLOCK_SIZE, y * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+      ctx.strokeStyle = "#222";
+      ctx.strokeRect(x * BLOCK_SIZE, y * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+
+      // Draw the symbol text on top
+      if (symbol) {
+          // Use a color that contrasts well with the block background
+          ctx.fillStyle = (elementIndex === ELEMENTS.AIR) ? '#333' : 'white'; // Dark gray for Air, white for others
+
+          // Adjust font size and style for the symbol
+          ctx.font = `normal ${BLOCK_SIZE * 0.8}px Arial`; // Arial is likely to support emojis/symbols
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(symbol, x * BLOCK_SIZE + BLOCK_SIZE / 2, y * BLOCK_SIZE + BLOCK_SIZE / 2);
+      }
+    }
+
+    function drawBoard() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      for (let y = 0; y < ROWS; y++) {
+        for (let x = 0; x < COLS; x++) {
+          drawBlock(x, y, board[y][x]);
+        }
+      }
+
+      if (currentPiece) {
+        drawPiece(currentPiece);
+      }
+
+       ctx.strokeStyle = '#333';
+       for (let y = 0; y < ROWS; y++) {
+         for (let x = 0; x < COLS; x++) {
+           if (board[y][x] === ELEMENTS.EMPTY && (!currentPiece || !isPieceBlockAt(currentPiece, x, y))) {
+              ctx.strokeRect(x * BLOCK_SIZE, y * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+           }
+         }
+       }
+    }
+
+    function drawPiece(piece) {
+      piece.shape.forEach((row, dy) => {
+        row.forEach((val, dx) => {
+          if (val !== 0) {
+            drawBlock(piece.x + dx, piece.y + dy, piece.element);
+          }
+        });
+      });
+    }
+
+     // Helper to check if a piece block *would be* at a specific board coordinate
+    function isPieceBlockAt(piece, boardX, boardY) {
+        if (!piece) return false;
+        const shape = piece.shape;
+        const shapeWidth = shape[0].length;
+        const shapeHeight = shape.length;
+
+        if (boardX < piece.x || boardX >= piece.x + shapeWidth ||
+            boardY < piece.y || boardY >= piece.y + shapeHeight) {
+            return false;
+        }
+
+        const localX = boardX - piece.x;
+        const localY = boardY - piece.y;
+
+        return shape[localY][localX] !== 0;
+    }
+
+
+    // --- Game Logic Functions ---
+
+    function newPiece() {
+      const shapeIndex = Math.floor(Math.random() * SHAPES.length);
+      const shape = SHAPES[shapeIndex];
+      // Randomly assign an element (excluding EMPTY - indices 1 to last_element_index)
+      const elementIndex = Math.floor(Math.random() * (Object.keys(ELEMENTS).length - 1)) + 1;
+
+      return {
+        shape: shape,
+        element: elementIndex,
+        x: Math.floor((COLS / 2)) - Math.floor(shape[0].length / 2),
+        y: 0
+      };
+    }
+
+    // Check if a potential piece position/shape is valid
+    function isValidMove(piece) {
+        if (!piece) return false;
+
+      for (let dy = 0; dy < piece.shape.length; dy++) {
+        for (let dx = 0; dx < piece.shape[dy].length; dx++) {
+          const val = piece.shape[dy][dx];
+          if (val !== 0) {
+            const boardX = piece.x + dx;
+            const boardY = piece.y + dy;
+
+            if (boardX < 0 || boardX >= COLS || boardY >= ROWS) {
+              return false;
+            }
+
+            if (boardY >= 0 && board[boardY][boardX] !== ELEMENTS.EMPTY) {
+              return false;
+            }
+          }
+        }
+      }
+      return true;
+    }
+
+    // Merge the current piece into the board
+    function mergePiece(piece) {
+      piece.shape.forEach((row, dy) => {
+        row.forEach((val, dx) => {
+          if (val !== 0) {
+            board[piece.y + dy][piece.x + dx] = piece.element;
+          }
+        });
+      });
+    }
+
+    // Handle elemental interactions on the board
+    function handleInteractions() {
+        let changesMade;
+        let passes = 0;
+        const MAX_INTERACTION_PASSES = ROWS * COLS * 2;
+
+        do {
+            changesMade = false;
+            passes++;
+            if (passes > MAX_INTERACTION_PASSES) {
+                 console.warn("Interaction loop possibly infinite, breaking.");
+                 break;
+            }
+
+            const pendingChanges = new Map();
+
+            // Iterate through the board to find reacting pairs
+            for (let y = 0; y < ROWS; y++) {
+                for (let x = 0; x < COLS; x++) {
+                    const currentElement = board[y][x];
+                    if (currentElement === ELEMENTS.EMPTY) continue;
+
+                    // Check neighbors (only right and down to avoid double-counting pairs)
+                    const neighborsToCheck = [[y + 1, x], [y, x + 1]];
+
+                    for (const [ny, nx] of neighborsToCheck) {
+                        // Check if neighbor is valid and has an element
+                        if (ny >= 0 && ny < ROWS && nx >= 0 && nx < COLS) {
+                            const neighborElement = board[ny][nx];
+                             if (neighborElement === ELEMENTS.EMPTY) continue;
+
+                             // --- Define Elemental Reactions ---
+
+                             // Fire (2) melts Ice (5) -> Ice becomes Water (1)
+                             if ((currentElement === ELEMENTS.FIRE && neighborElement === ELEMENTS.ICE) ||
+                                 (currentElement === ELEMENTS.ICE && neighborElement === ELEMENTS.FIRE)) {
+                                 if (currentElement === ELEMENTS.ICE) pendingChanges.set(`${y},${x}`, ELEMENTS.WATER);
+                                 if (neighborElement === ELEMENTS.ICE) pendingChanges.set(`${ny},${nx}`, ELEMENTS.WATER);
+                             }
+
+                             // Water (1) extinguishes Fire (2) -> Fire becomes Earth (3)
+                             if ((currentElement === ELEMENTS.WATER && neighborElement === ELEMENTS.FIRE) ||
+                                 (currentElement === ELEMENTS.FIRE && neighborElement === ELEMENTS.WATER)) {
+                                 if (currentElement === ELEMENTS.FIRE) pendingChanges.set(`${y},${x}`, ELEMENTS.EARTH);
+                                 if (neighborElement === ELEMENTS.FIRE) pendingChanges.set(`${ny},${nx}`, ELEMENTS.EARTH);
+                             }
+
+                             // Air (4) dissolves adjacent elements (except Air itself) -> Both become EMPTY (0)
+                             if (currentElement === ELEMENTS.AIR && neighborElement !== ELEMENTS.AIR) {
+                                 pendingChanges.set(`${y},${x}`, ELEMENTS.EMPTY);
+                                 pendingChanges.set(`${ny},${nx}`, ELEMENTS.EMPTY);
+                             } else if (neighborElement === ELEMENTS.AIR && currentElement !== ELEMENTS.AIR) {
+                                 pendingChanges.set(`${y},${x}`, ELEMENTS.EMPTY);
+                                 pendingChanges.set(`${ny},${nx}`, ELEMENTS.EMPTY);
+                             }
+
+                             // Water (1) freezes near Ice (5) -> Water becomes Ice (5)
+                             if ((currentElement === ELEMENTS.WATER && neighborElement === ELEMENTS.ICE) ||
+                                 (currentElement === ELEMENTS.ICE && neighborElement === ELEMENTS.WATER)) {
+                                  if (currentElement === ELEMENTS.WATER) pendingChanges.set(`${y},${x}`, ELEMENTS.ICE);
+                                  if (neighborElement === ELEMENTS.WATER) pendingChanges.set(`${ny},${nx}`, ELEMENTS.ICE);
+                             }
+                             // --- Add more reactions here! ---
+
+                        }
+                    }
+                }
+            }
+
+            // Apply collected changes
+            if (pendingChanges.size > 0) {
+                changesMade = true;
+
+                pendingChanges.forEach((newValue, key) => {
+                    const [y, x] = key.split(',').map(Number);
+                    board[y][x] = newValue;
+                });
+            }
+
+        } while (changesMade);
+
+         // After interactions, apply gravity to make blocks fall into empty spaces
+         applyGravityAfterInteractions();
+    }
+
+    // After interactions, check if any blocks need to fall due to empty spaces below
+    function applyGravityAfterInteractions() {
+        let blocksFell;
+        do {
+            blocksFell = false;
+            // Iterate from the second-to-last row up to the top
+            for (let y = ROWS - 2; y >= 0; y--) {
+                for (let x = 0; x < COLS; x++) {
+                    // If a block is not empty and the space directly below it is empty
+                    if (board[y][x] !== ELEMENTS.EMPTY && board[y + 1][x] === ELEMENTS.EMPTY) {
+                        // Make the block fall down one step
+                        board[y + 1][x] = board[y][x];
+                        board[y][x] = ELEMENTS.EMPTY;
+                        blocksFell = true; // A block fell, so we need to check again
+                    }
+                }
+            }
+        } while (blocksFell); // Repeat passes until no blocks fall
+    }
+
+
+    // Check and clear full lines
+    function clearLines() {
+      let linesClearedThisTurn = 0;
+      // Iterate from the bottom up
+      for (let y = ROWS - 1; y >= 0; y--) {
+        // Check if the row is full (no empty cells)
+        if (board[y].every(cell => cell !== ELEMENTS.EMPTY)) {
+          // Remove the full row
+          board.splice(y, 1);
+          // Add a new empty row at the top
+          board.unshift(Array(COLS).fill(ELEMENTS.EMPTY));
+          linesClearedThisTurn++;
+          // Decrement y so the row that shifted down is checked
+          y++;
+        }
+      }
+
+      if (linesClearedThisTurn > 0) {
+          // Update total lines cleared FIRST, as score and speed depend on it
+          linesClearedTotal += linesClearedThisTurn;
+
+          // Update score based on total lines cleared and current lines cleared
+          let baseScore = 0;
+          switch (linesClearedThisTurn) {
+              case 1: baseScore = 100; break;
+              case 2: baseScore = 300; break;
+              case 3: baseScore = 500; break;
+              case 4: baseScore = 800; break;
+              default: baseScore = linesClearedThisTurn * 200;
+          }
+          // Level is derived from total lines for scoring multiplier
+          level = Math.floor(linesClearedTotal / 10) + 1; // Level increases every 10 lines
+          score += baseScore * level;
+
+
+          // Update speed based on total lines cleared
+          dropInterval = Math.max(minimumDropInterval, initialDropInterval - (linesClearedTotal * speedDecreasePerLine));
+
+
+          // Update info display
+          updateGameInfo();
+
+          // Elemental interactions and gravity after clearing are handled in the main loop
+      }
+    }
+
+    // Rotate the piece clockwise
+    function rotatePiece(piece) {
+        // For the O piece (2x2), rotation does nothing
+        if (piece.shape.length === 2 && piece.shape[0].length === 2) {
+            return;
+        }
+
+        const originalShape = piece.shape;
+        const rotatedShape = [];
+        const rows = originalShape.length;
+        const cols = originalShape[0].length;
+
+        // Perform the rotation (transpose and reverse rows)
+        for (let c = 0; c < cols; c++) {
+            rotatedShape[c] = [];
+            for (let r = rows - 1; r >= 0; r--) {
+                rotatedShape[c].push(originalShape[r][c]);
+            }
+        }
+
+        const rotatedPiece = { ...piece, shape: rotatedShape };
+
+        // --- Wall Kick Logic (Simple) ---
+        const offsets = [0, -1, 1, -2, 2, -3, 3];
+
+        for (const offset of offsets) {
+            rotatedPiece.x = piece.x + offset;
+            if (isValidMove(rotatedPiece)) {
+                piece.shape = rotatedShape;
+                piece.x = rotatedPiece.x;
+                return;
+            }
+        }
+    }
+
+    // Update the score, level, lines, and next piece element display
+    function updateGameInfo() {
+        // Derive level for display/scoring
+        level = Math.floor(linesClearedTotal / 10) + 1;
+        gameInfoDisplay.textContent = `Level: ${level} | Lines: ${linesClearedTotal} | Score: ${score}`;
+        if (nextPiece) {
+             const elementProps = ELEMENT_PROPERTIES[nextPiece.element];
+             // Use innerHTML to apply the CSS class for color
+             nextPieceInfoDisplay.innerHTML = `Next: <span class="${elementProps.class}">${elementProps.name}</span>`;
+        } else {
+             nextPieceInfoDisplay.textContent = 'Next: '; // Or 'None'
+        }
+    }
+
+    // Game loop for dropping pieces and handling updates
+    function drop(time = 0) {
+        const deltaTime = time - lastTime;
+
+        if (deltaTime > dropInterval) {
+            const potentialPiece = { ...currentPiece, y: currentPiece.y + 1 };
+
+            if (isValidMove(potentialPiece)) {
+                currentPiece.y++;
+            } else {
+                // Landed!
+                mergePiece(currentPiece);
+                handleInteractions();
+                clearLines();
+                handleInteractions(); // Trigger reactions again after block shifts
+
+                // Get the next piece
+                currentPiece = nextPiece;
+                nextPiece = newPiece();
+                updateGameInfo(); // Update info after potential line clear
+
+                // Check game over
+                if (!isValidMove(currentPiece)) {
+                    gameOver();
+                    return;
+                }
+            }
+            lastTime = time;
+        }
+
+        drawBoard();
+
+        gameLoopId = requestAnimationFrame(drop);
+    }
+
+    // Game Over function
+    function gameOver() {
+        cancelAnimationFrame(gameLoopId);
+        finalScoreDisplay.textContent = `Final Score: ${score}`;
+        gameOverDisplay.style.visibility = 'visible';
+        document.removeEventListener("keydown", handleKeyDown);
+    }
+
+    // Handle keyboard input
+    function handleKeyDown(e) {
+      if (!currentPiece || gameOverDisplay.style.visibility === 'visible') return;
+
+      e.preventDefault();
+
+      const potentialPiece = { ...currentPiece };
+
+      switch (e.key) {
+          case "ArrowLeft":
+              potentialPiece.x--;
+              if (isValidMove(potentialPiece)) {
+                currentPiece.x = potentialPiece.x;
+              }
+              break;
+          case "ArrowRight":
+              potentialPiece.x++;
+              if (isValidMove(potentialPiece)) {
+                currentPiece.x = potentialPiece.x;
+              }
+              break;
+          case "ArrowDown":
+              potentialPiece.y++;
+              if (isValidMove(potentialPiece)) {
+                currentPiece.y = potentialPiece.y;
+              } else {
+                // Land the piece
+                mergePiece(currentPiece);
+                handleInteractions();
+                clearLines(); // clearLines updates speed and linesClearedTotal
+                handleInteractions();
+
+                currentPiece = nextPiece;
+                nextPiece = newPiece();
+                updateGameInfo(); // Update info after landing
+
+                if (!isValidMove(currentPiece)) {
+                    gameOver();
+                    return;
+                }
+              }
+              lastTime = performance.now(); // Reset drop timer after manual down
+              break;
+          case "ArrowUp":
+          case " ":
+              rotatePiece(currentPiece);
+              break;
+      }
+
+      drawBoard();
+    }
+
+    // Options to adjust speed and difficulty
+    function setDifficulty(levelPreset) {
+        switch (levelPreset) {
+            case 'easy':
+                initialDropInterval = 1500; // Start much slower
+                speedDecreasePerLine = 15;  // Slower speed increase per line
+                minimumDropInterval = 300;
+                break;
+            case 'medium': // Default
+                initialDropInterval = 1000;
+                speedDecreasePerLine = 10; // Standard speed increase
+                minimumDropInterval = 100;
+                break;
+            case 'hard':
+                initialDropInterval = 800; // Start faster
+                speedDecreasePerLine = 8;  // Slightly less decrease per line than medium, but starts faster
+                minimumDropInterval = 50;  // Can get very fast
+                break;
+            case 'fast-hard': // Example: Starts fast, speeds up quickly
+                initialDropInterval = 600;
+                speedDecreasePerLine = 12;
+                minimumDropInterval = 40;
+                break;
+            case 'custom':
+                break;
+            default:
+                 console.warn("Unknown difficulty preset:", levelPreset);
+                 setDifficulty('medium');
+                 return;
+        }
+         // Recalculate current drop interval based on potentially new settings and current lines
+        dropInterval = Math.max(minimumDropInterval, initialDropInterval - (linesClearedTotal * speedDecreasePerLine));
+    }
+
+
+    // --- Game Initialization ---
+
+    // Make startTetris globally accessible
+    window.startTetris = function() {
+      // Reset game state
+      board = Array.from({ length: ROWS }, () => Array(COLS).fill(ELEMENTS.EMPTY));
+      score = 0;
+      linesClearedTotal = 0; // Reset total lines
+      level = 1; // Reset derived level
+
+      // Reset drop interval based on initial setting and 0 lines cleared
+      dropInterval = initialDropInterval;
+
+      gameOverDisplay.style.visibility = 'hidden';
+
+      // Create initial pieces
+      currentPiece = newPiece();
+      nextPiece = newPiece();
+
+      updateGameInfo(); // Update display including next piece and reset values
+
+      // Start the game loop
+      lastTime = performance.now();
+      if(gameLoopId) cancelAnimationFrame(gameLoopId);
+      gameLoopId = requestAnimationFrame(drop);
+
+      // Add event listener for controls (ensure only one is active)
+      document.removeEventListener("keydown", handleKeyDown);
+      document.addEventListener("keydown", handleKeyDown);
+    };
+
+
+    // Set default difficulty (call this BEFORE startTetris)
+    setDifficulty('medium'); // Choose 'easy', 'medium', 'hard', 'fast-hard', or 'custom'
+
+    // Start the game when the window loads
+    window.addEventListener('load', window.startTetris);
+
+  </script>
+</body>
+</html>

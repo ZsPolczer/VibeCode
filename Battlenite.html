@@ -1,0 +1,1694 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>MiniRoyale</title>
+    <style>
+        /* Basic Reset & Body Styling */
+        body {
+            margin: 0;
+            overflow: hidden; /* Prevent scrollbars */
+            background-color: #333;
+            color: #fff;
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            touch-action: none; /* Prevent default touch actions like scrolling */
+        }
+
+        /* Game Container */
+        #game-container {
+            position: relative;
+            /* Set dimensions dynamically via JS based on map size */
+            overflow: hidden;
+            background-color: #5a8a5a; /* Default grass color */
+            border: 2px solid #000;
+            user-select: none; /* Prevent text selection */
+            -webkit-user-select: none;
+            -ms-user-select: none;
+        }
+
+        /* Map Tiles (Example - Could be replaced by background or more complex rendering) */
+        .tile {
+             position: absolute;
+             /* size set by JS */
+             z-index: 0;
+        }
+        .tile-sand { background-color: #f0e68c; }
+        .tile-water { background-color: #4682b4; }
+        .tile-forest { background-color: #228b22; opacity: 0.7; } /* Forest can be semi-transparent overlay */
+        .tile-rocky { background-color: #8b4513; }
+
+        /* Entities (Player, AI) */
+        .entity {
+            position: absolute;
+            /* size set by JS */
+            border-radius: 50%; /* Circle shape */
+            border: 1px solid #000;
+            box-sizing: border-box;
+            z-index: 10;
+            transition: transform 0.05s linear; /* Smooth rotation */
+        }
+        .player {
+            background-color: #007bff; /* Blue */
+        }
+        .ai {
+            background-color: #dc3545; /* Red */
+        }
+        .entity::after { /* Direction indicator */
+            content: '';
+            position: absolute;
+            width: 40%;
+            height: 3px;
+            background-color: #000;
+            top: 50%;
+            left: 50%;
+            transform: translate(0, -50%); /* Center vertically, offset horizontally */
+        }
+
+        /* Health Bar (Above Entities) */
+        .health-bar {
+            position: absolute;
+            bottom: 110%; /* Position above the entity */
+            left: 50%;
+            transform: translateX(-50%);
+            width: 30px; /* Fixed width */
+            height: 5px;
+            background-color: #ccc;
+            border: 1px solid #000;
+            z-index: 11;
+        }
+        .health-bar-inner {
+            height: 100%;
+            background-color: #28a745; /* Green */
+            width: 100%; /* Starts full */
+            transition: width 0.1s linear;
+        }
+
+        /* Obstacles */
+        .obstacle {
+            position: absolute;
+            background-color: #696969; /* Grey */
+            border: 1px solid #000;
+            z-index: 5;
+        }
+        .bush {
+            background-color: #556b2f; /* Dark Olive Green */
+            opacity: 0.8;
+            border-radius: 30%;
+            z-index: 6; /* Bushes above ground obstacles */
+        }
+         .wall {
+             background-color: #a0522d; /* Sienna */
+             z-index: 5;
+         }
+
+
+        /* Chests */
+        .chest {
+            position: absolute;
+            background-color: #ffd700; /* Gold */
+            border: 1px solid #8b4513; /* Brown border */
+            width: 20px;
+            height: 20px;
+            z-index: 7;
+            cursor: pointer; /* Indicate interactable */
+        }
+
+        /* Items */
+        .item {
+            position: absolute;
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            border: 1px solid #000;
+            z-index: 8;
+        }
+        .item-weapon-ar { background-color: #ff7f50; } /* Coral */
+        .item-weapon-smg { background-color: #add8e6; } /* Light Blue */
+        .item-weapon-shotgun { background-color: #90ee90; } /* Light Green */
+        .item-healthkit { background-color: #f08080; } /* Light Coral */
+
+        /* Projectiles */
+        .projectile {
+            position: absolute;
+            width: 5px;
+            height: 5px;
+            background-color: #ffeb3b; /* Yellow */
+            border-radius: 50%;
+            z-index: 9;
+            pointer-events: none; /* Don't interfere with mouse clicks */
+        }
+
+        /* Storm */
+        #storm-circle {
+            position: absolute;
+            border: 5px dashed rgba(138, 43, 226, 0.6); /* Purple, semi-transparent */
+            border-radius: 50%;
+            box-sizing: border-box;
+            pointer-events: none; /* Don't block clicks */
+            z-index: 20;
+            /* Size and position set by JS */
+             /* Add a visual effect for being outside */
+            box-shadow: 0 0 0 5000px rgba(138, 43, 226, 0.15); /* Outer shadow */
+        }
+
+
+        /* UI Elements */
+        #ui-container {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            right: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            pointer-events: none; /* Allow clicks to pass through UI background */
+            z-index: 30;
+            color: #fff;
+            text-shadow: 1px 1px 2px black;
+        }
+        #ui-left, #ui-right, #ui-center {
+            background-color: rgba(0, 0, 0, 0.5);
+            padding: 5px 10px;
+            border-radius: 5px;
+            pointer-events: auto; /* Re-enable pointer events for buttons inside */
+        }
+         #ui-center {
+             position: absolute;
+             bottom: 10px; /* Align with others */
+             left: 50%;
+             transform: translateX(-50%);
+         }
+
+        #health-bar-ui {
+            width: 150px;
+            height: 20px;
+            background-color: #ccc;
+            border: 1px solid #000;
+            margin-bottom: 5px;
+        }
+        #health-bar-ui-inner {
+            height: 100%;
+            background-color: #28a745; /* Green */
+            width: 100%;
+            transition: width 0.1s linear;
+        }
+        #weapon-info, #health-kit-info, #player-count, #storm-timer {
+             margin-top: 5px;
+             font-size: 14px;
+        }
+
+        /* Minimap */
+        #minimap-container {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 150px; /* Example size */
+            height: 150px;
+            background-color: rgba(0, 0, 0, 0.6);
+            border: 2px solid #fff;
+            overflow: hidden;
+            z-index: 30;
+
+        }
+        #minimap-player {
+            position: absolute;
+            width: 5px;
+            height: 5px;
+            background-color: #007bff; /* Player color */
+            border-radius: 50%;
+            /* Position updated by JS */
+        }
+        #minimap-storm {
+             position: absolute;
+             border: 1px dashed rgba(138, 43, 226, 0.8);
+             border-radius: 50%;
+             /* Size and position updated by JS */
+        }
+         /* Add dots for AI on minimap if desired */
+         .minimap-ai {
+
+
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background-color: #dc3545; /* AI color */
+            border-radius: 50%;
+            /* Position updated by JS */
+
+         }
+         
+
+
+        /* Touch Controls */
+        #touch-controls {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 150px; /* Area for controls */
+            z-index: 25;
+            pointer-events: none; /* Container doesn't block */
+            display: none; /* Hidden by default, shown on touch devices */
+        }
+        #joystick-area {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            width: 120px;
+            height: 120px;
+            background-color: rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            pointer-events: auto; /* Enable touch */
+        }
+        #joystick-thumb {
+            position: absolute;
+            width: 50px;
+            height: 50px;
+            background-color: rgba(255, 255, 255, 0.5);
+            border-radius: 50%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none; /* Thumb doesn't block area */
+        }
+        #shoot-button {
+            position: absolute;
+            bottom: 35px; /* Adjusted position */
+            right: 35px; /* Adjusted position */
+            width: 80px;
+            height: 80px;
+            background-color: rgba(255, 80, 80, 0.5);
+            border-radius: 50%;
+            pointer-events: auto; /* Enable touch */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-weight: bold;
+        }
+         #health-kit-button {
+             position: absolute;
+             bottom: 130px; /* Position above shoot */
+             right: 45px;
+             width: 60px;
+             height: 60px;
+             background-color: rgba(80, 255, 80, 0.5);
+             border-radius: 50%;
+             pointer-events: auto; /* Enable touch */
+             display: flex;
+             justify-content: center;
+             align-items: center;
+             color: white;
+             font-size: 12px;
+             text-align: center;
+         }
+
+        /* Game Over / Win Screen */
+        #message-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            color: white;
+            display: none; /* Hidden by default */
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            font-size: 2em;
+            z-index: 50;
+        }
+         #message-screen button {
+             margin-top: 20px;
+             padding: 10px 20px;
+             font-size: 0.8em;
+         }
+
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <!-- Dynamic elements (player, AI, items, etc.) will be added here by JS -->
+        <div id="storm-circle"></div>
+    </div>
+
+    <div id="ui-container">
+        <div id="ui-left">
+            <div id="health-bar-ui"><div id="health-bar-ui-inner"></div></div>
+            <div id="health-kit-info">Health Kits: 0</div>
+        </div>
+        <div id="ui-center">
+            <div id="storm-timer">Storm: Preparing...</div>
+            <div id="player-count">Players Left: 11</div>
+        </div>
+        <div id="ui-right">
+             <div id="weapon-info">Weapon: None</div>
+             <!-- Ammo would go here if implemented -->
+        </div>
+    </div>
+
+    <div id="minimap-container">
+        <div id="minimap-player"></div>
+        <div id="minimap-storm"></div>
+        <!-- AI dots will be added here by JS -->
+    </div>
+
+    <div id="touch-controls">
+        <div id="joystick-area">
+            <div id="joystick-thumb"></div>
+        </div>
+        <button id="shoot-button">SHOOT</button>
+        <button id="health-kit-button">USE KIT</button>
+    </div>
+
+    <div id="message-screen">
+        <div id="message-text"></div>
+        <button id="restart-button">Play Again</button>
+    </div>
+
+    <script>
+        const gameContainer = document.getElementById('game-container');
+        const uiContainer = document.getElementById('ui-container');
+        const healthBarUiInner = document.getElementById('health-bar-ui-inner');
+        const weaponInfo = document.getElementById('weapon-info');
+        const healthKitInfo = document.getElementById('health-kit-info');
+        const playerCount = document.getElementById('player-count');
+        const stormTimer = document.getElementById('storm-timer');
+        const stormCircle = document.getElementById('storm-circle');
+        const minimapContainer = document.getElementById('minimap-container');
+        const minimapPlayer = document.getElementById('minimap-player');
+        const minimapStorm = document.getElementById('minimap-storm');
+        const messageScreen = document.getElementById('message-screen');
+        const messageText = document.getElementById('message-text');
+        const restartButton = document.getElementById('restart-button');
+
+        const AI_CHEST_SEARCH_RADIUS = 450; // How far AI looks for chests
+        const AI_ENEMY_SEARCH_RADIUS = 400; // How far AI looks for enemies
+        const AI_CHEST_INTERACT_DIST = 25;  // How close AI needs to be to 'open' a chest
+
+        // --- Touch Controls ---
+        const touchControls = document.getElementById('touch-controls');
+        const joystickArea = document.getElementById('joystick-area');
+        const joystickThumb = document.getElementById('joystick-thumb');
+        const shootButton = document.getElementById('shoot-button');
+        const healthKitButton = document.getElementById('health-kit-button');
+        let joystickActive = false;
+        let joystickStartX = 0;
+        let joystickStartY = 0;
+        let joystickCurrentX = 0;
+        let joystickCurrentY = 0;
+        let touchShootActive = false;
+        let touchUseKitActive = false;
+        const MAX_JOYSTICK_DIST = 30; // Max pixels the thumb can move from center
+
+        // --- Game Constants ---
+        const TILE_SIZE = 40; // Pixel size of a grid tile
+        const MAP_WIDTH_TILES = 40;
+        const MAP_HEIGHT_TILES = 40;
+        const MAP_WIDTH_PX = MAP_WIDTH_TILES * TILE_SIZE;
+        const MAP_HEIGHT_PX = MAP_HEIGHT_TILES * TILE_SIZE;
+        const PLAYER_SIZE = 20;
+        const AI_SIZE = 20;
+        const PLAYER_SPEED = 150; // Pixels per second
+        const AI_SPEED = 120;
+        const PROJECTILE_SIZE = 5;
+        const PROJECTILE_SPEED = 400;
+        const CHEST_SIZE = 20;
+        const ITEM_SIZE = 15;
+        const MAX_HEALTH = 100;
+        const MAX_HEALTH_KITS = 3;
+        const HEALTH_KIT_HEAL_AMOUNT = 50;
+        const HEALTH_KIT_USE_TIME = 1000; // ms
+        const OBSTACLE_MIN_SIZE = TILE_SIZE * 0.8;
+        const OBSTACLE_MAX_SIZE = TILE_SIZE * 2.5;
+        const BUSH_SIZE = TILE_SIZE * 1.5;
+        const WALL_THICKNESS = 10;
+        const WALL_MIN_LENGTH = TILE_SIZE * 2;
+        const WALL_MAX_LENGTH = TILE_SIZE * 6;
+
+        const WEAPONS = {
+            'AR': { name: 'AR', damage: 15, range: 400, fireRate: 150, projectileSpeed: 500, color: '#ff7f50' },
+            'SMG': { name: 'SMG', damage: 8, range: 250, fireRate: 70, projectileSpeed: 600, color: '#add8e6' },
+            'Shotgun': { name: 'Shotgun', damage: 25, range: 150, fireRate: 800, projectileSpeed: 350, pellets: 5, spread: 0.4, color: '#90ee90' }, // radians spread
+        };
+
+        const STORM_PHASES = [
+            { duration: 90, radiusFraction: 0.8, damage: 1 }, // Phase 1: 90s to shrink to 80%
+            { duration: 60, radiusFraction: 0.6, damage: 2 }, // Phase 2: 60s to shrink to 60%
+            { duration: 45, radiusFraction: 0.4, damage: 5 }, // Phase 3: 45s to shrink to 40%
+            { duration: 30, radiusFraction: 0.2, damage: 8 }, // Phase 4: 30s to shrink to 20%
+            { duration: 30, radiusFraction: 0.1, damage: 10 }, // Phase 5: 30s to shrink to 10%
+            { duration: Infinity, radiusFraction: 0.1, damage: 15} // Final Phase
+        ];
+
+        // --- Game State ---
+        let gameState = {
+            player: null,
+            ai: [],
+            projectiles: [],
+            items: [],
+            chests: [],
+            obstacles: [], // Includes bushes and walls
+            mapGrid: [], // Optional: Can store terrain type per tile
+            keysDown: {},
+            mousePos: { x: 0, y: 0 },
+            isMouseDown: false,
+            gameTime: 0,
+            lastTimestamp: 0,
+            deltaTime: 0,
+            currentStormPhase: -1, // Starts before phase 0
+            stormRadius: MAP_WIDTH_PX, // Initial large radius
+            stormCenterX: MAP_WIDTH_PX / 2,
+            stormCenterY: MAP_HEIGHT_PX / 2,
+            nextStormRadius: MAP_WIDTH_PX,
+            nextStormCenterX: MAP_WIDTH_PX / 2,
+            nextStormCenterY: MAP_HEIGHT_PX / 2,
+            stormTimer: 0, // Time until next shrink starts/completes
+            isStormShrinking: false,
+            gameOver: false,
+            minimapAIDots: [], // Store refs to AI minimap dots
+            isUsingHealthKit: false,
+            healthKitUseTimer: 0,
+        };
+
+        // --- Utility Functions ---
+        function getRandom(min, max) {
+            return Math.random() * (max - min) + min;
+        }
+
+        function getRandomInt(min, max) {
+            return Math.floor(Math.random() * (max - min + 1)) + min;
+        }
+
+        function checkCollision(rect1, rect2) {
+            return rect1.x < rect2.x + rect2.width &&
+                   rect1.x + rect1.width > rect2.x &&
+                   rect1.y < rect2.y + rect2.height &&
+                   rect1.y + rect1.height > rect2.y;
+        }
+
+        function getDistance(x1, y1, x2, y2) {
+            const dx = x2 - x1;
+            const dy = y2 - y1;
+            return Math.sqrt(dx * dx + dy * dy);
+        }
+
+        function getAngle(x1, y1, x2, y2) {
+            return Math.atan2(y2 - y1, x2 - x1);
+        }
+
+        // --- Entity Class (Basic Structure) ---
+        class Entity {
+            constructor(x, y, size, color, type = 'entity') {
+                this.x = x;
+                this.y = y;
+                this.size = size;
+                this.width = size;
+                this.height = size;
+                this.vx = 0; // Velocity x
+                this.vy = 0; // Velocity y
+                this.angle = 0; // Radians
+                this.health = MAX_HEALTH;
+                this.maxHealth = MAX_HEALTH;
+                this.element = document.createElement('div');
+                this.element.classList.add('entity', type);
+                this.element.style.width = `${size}px`;
+                this.element.style.height = `${size}px`;
+                this.element.style.backgroundColor = color;
+                this.element.style.left = `${x - size / 2}px`;
+                this.element.style.top = `${y - size / 2}px`;
+
+                this.healthBarElement = document.createElement('div');
+                this.healthBarElement.classList.add('health-bar');
+                this.healthBarInnerElement = document.createElement('div');
+                this.healthBarInnerElement.classList.add('health-bar-inner');
+                this.healthBarElement.appendChild(this.healthBarInnerElement);
+
+                gameContainer.appendChild(this.element);
+                gameContainer.appendChild(this.healthBarElement);
+
+                this.lastShotTime = 0;
+                this.weapon = null;
+                this.type = type; // 'player' or 'ai'
+                this.isHiding = false; // If inside a bush
+            }
+
+            update(dt) {
+                // Basic Movement (applied externally for player/ai)
+                const prevX = this.x;
+                const prevY = this.y;
+
+                this.x += this.vx * dt;
+                this.y += this.vy * dt;
+
+                // Collision with Map Boundaries
+                this.x = Math.max(this.size / 2, Math.min(MAP_WIDTH_PX - this.size / 2, this.x));
+                this.y = Math.max(this.size / 2, Math.min(MAP_HEIGHT_PX - this.size / 2, this.y));
+
+                // Collision with Obstacles (Simple AABB)
+                let collided = false;
+                gameState.obstacles.forEach(obstacle => {
+                     const entityRect = { x: this.x - this.size / 2, y: this.y - this.size / 2, width: this.size, height: this.size };
+                     const obstacleRect = { x: obstacle.x, y: obstacle.y, width: obstacle.width, height: obstacle.height };
+
+                     if (checkCollision(entityRect, obstacleRect) && !obstacle.isBush) { // Allow entering bushes
+                         // Very basic collision response: Stop movement axis
+                         // Try moving only on X
+                         const tempRectX = { ...entityRect, x: prevX - this.size/2, y: this.y - this.size/2 };
+                         if (!checkCollision(tempRectX, obstacleRect)) {
+                             this.x = prevX; // Allow Y move
+                         } else {
+                             // Try moving only on Y
+                             const tempRectY = { ...entityRect, x: this.x - this.size/2, y: prevY - this.size/2 };
+                            if (!checkCollision(tempRectY, obstacleRect)) {
+                                this.y = prevY; // Allow X move
+                            } else {
+                                // Stuck? Revert both
+                                this.x = prevX;
+                                this.y = prevY;
+                            }
+                         }
+                         collided = true;
+                     }
+                });
+
+                 // Check if inside a bush
+                 this.isHiding = false;
+                 gameState.obstacles.forEach(obstacle => {
+                    if (obstacle.isBush) {
+                        const entityRect = { x: this.x - this.size / 2, y: this.y - this.size / 2, width: this.size, height: this.size };
+                        const bushRect = { x: obstacle.x, y: obstacle.y, width: obstacle.width, height: obstacle.height };
+                        if (checkCollision(entityRect, bushRect)) {
+                           this.isHiding = true;
+                        }
+                    }
+                 });
+                 this.element.style.opacity = this.isHiding ? '0.5' : '1'; // Visual feedback for hiding
+
+
+                // Update DOM Element Position & Rotation
+                this.element.style.left = `${this.x - this.size / 2}px`;
+                this.element.style.top = `${this.y - this.size / 2}px`;
+                this.element.style.transform = `rotate(${this.angle}rad)`; // Rotate based on angle
+
+                // Update Health Bar Position & Value
+                this.healthBarElement.style.left = `${this.x}px`; // Center above
+                this.healthBarElement.style.top = `${this.y - this.size / 2 - 10}px`; // Position above
+                const healthPercent = Math.max(0, (this.health / this.maxHealth) * 100);
+                this.healthBarInnerElement.style.width = `${healthPercent}%`;
+            }
+
+            shoot(targetX, targetY) {
+                const now = gameState.gameTime;
+                if (!this.weapon || now < this.lastShotTime + this.weapon.fireRate) {
+                    return; // No weapon or cooldown active
+                }
+
+                this.lastShotTime = now;
+                const weapon = WEAPONS[this.weapon];
+                const angleToTarget = getAngle(this.x, this.y, targetX, targetY);
+
+                if (weapon.name === 'Shotgun') {
+                    for (let i = 0; i < weapon.pellets; i++) {
+                        const spreadAngle = angleToTarget + getRandom(-weapon.spread / 2, weapon.spread / 2);
+                        createProjectile(this.x, this.y, spreadAngle, weapon, this);
+                    }
+                } else {
+                     createProjectile(this.x, this.y, angleToTarget, weapon, this);
+                }
+            }
+
+            takeDamage(amount) {
+                if (this.health <= 0) return; // Already dead
+
+                this.health -= amount;
+                if (this.health <= 0) {
+                    this.die();
+                }
+                // Update health bar visual immediately if needed, or rely on next update cycle
+                const healthPercent = Math.max(0, (this.health / this.maxHealth) * 100);
+                this.healthBarInnerElement.style.width = `${healthPercent}%`;
+
+                if (this.type === 'player') {
+                    updatePlayerUI(); // Update main UI immediately
+                }
+            }
+
+            die() {
+                console.log(`${this.type} died`);
+                 // Remove elements from DOM
+                if (this.element.parentNode) this.element.parentNode.removeChild(this.element);
+                if (this.healthBarElement.parentNode) this.healthBarElement.parentNode.removeChild(this.healthBarElement);
+
+                // Remove from game state arrays
+                if (this.type === 'player') {
+                     gameState.player = null; // Mark player as dead
+                     showEndScreen("Game Over!");
+                     gameState.gameOver = true;
+                } else if (this.type === 'ai') {
+                    const index = gameState.ai.indexOf(this);
+                    if (index > -1) {
+                        gameState.ai.splice(index, 1);
+                        // Remove corresponding minimap dot
+                        if (gameState.minimapAIDots[index] && gameState.minimapAIDots[index].parentNode) {
+                           gameState.minimapAIDots[index].parentNode.removeChild(gameState.minimapAIDots[index]);
+                        }
+                        gameState.minimapAIDots.splice(index, 1);
+                    }
+                    // Check for win condition
+                    if (gameState.ai.length === 0 && gameState.player) {
+                       showEndScreen("You Win!");
+                       gameState.gameOver = true;
+                    }
+                }
+                updatePlayerCountUI();
+            }
+
+            pickupItem(item) {
+                if (item.itemType === 'weapon') {
+                    this.weapon = item.weaponType; // e.g., 'AR'
+                    if (this.type === 'player') updatePlayerUI();
+                    console.log(`${this.type} picked up ${item.weaponType}`);
+                } else if (item.itemType === 'healthkit') {
+                    if (this.type === 'player' && gameState.player.healthKits < MAX_HEALTH_KITS) {
+                        gameState.player.healthKits++;
+                        updatePlayerUI();
+                        console.log(`Player picked up Health Kit (${gameState.player.healthKits}/${MAX_HEALTH_KITS})`);
+                    } else {
+                         // AI doesn't use kits, or player inventory full, don't pick up
+                         return false; // Indicate item was not picked up
+                    }
+                }
+                 return true; // Indicate item was picked up
+            }
+        }
+
+        // --- Projectile Class ---
+        class Projectile {
+            constructor(x, y, angle, weaponStats, shooter) {
+                this.x = x;
+                this.y = y;
+                this.size = PROJECTILE_SIZE;
+                this.width = PROJECTILE_SIZE;
+                this.height = PROJECTILE_SIZE;
+                this.speed = weaponStats.projectileSpeed;
+                this.vx = Math.cos(angle) * this.speed;
+                this.vy = Math.sin(angle) * this.speed;
+                this.damage = weaponStats.damage;
+                this.range = weaponStats.range;
+                this.distanceTraveled = 0;
+                this.shooter = shooter; // Reference to the entity that shot it
+
+                this.element = document.createElement('div');
+                this.element.classList.add('projectile');
+                this.element.style.width = `${this.size}px`;
+                this.element.style.height = `${this.size}px`;
+                this.element.style.left = `${x - this.size / 2}px`;
+                this.element.style.top = `${y - this.size / 2}px`;
+                gameContainer.appendChild(this.element);
+            }
+
+            update(dt) {
+                const moveDist = this.speed * dt;
+                this.x += this.vx * dt;
+                this.y += this.vy * dt;
+                this.distanceTraveled += moveDist;
+
+                // Update DOM
+                this.element.style.left = `${this.x - this.size / 2}px`;
+                this.element.style.top = `${this.y - this.size / 2}px`;
+
+                // Check range
+                if (this.distanceTraveled >= this.range) {
+                    this.remove();
+                    return true; // Indicate removal
+                }
+
+                // Check collision with map bounds (remove if out)
+                if (this.x < 0 || this.x > MAP_WIDTH_PX || this.y < 0 || this.y > MAP_HEIGHT_PX) {
+                    this.remove();
+                    return true;
+                }
+
+                 // Check collision with obstacles (remove if hit solid obstacle)
+                 const projectileRect = { x: this.x - this.size / 2, y: this.y - this.size / 2, width: this.size, height: this.size };
+                 for (const obstacle of gameState.obstacles) {
+                     if (!obstacle.isBush) { // Don't collide with bushes
+                         const obstacleRect = { x: obstacle.x, y: obstacle.y, width: obstacle.width, height: obstacle.height };
+                         if (checkCollision(projectileRect, obstacleRect)) {
+                             this.remove();
+                             return true;
+                         }
+                     }
+                 }
+
+
+                // Check collision with entities
+                const entitiesToCheck = [gameState.player, ...gameState.ai].filter(e => e && e !== this.shooter); // Check player and all AI, except the shooter
+                for (const entity of entitiesToCheck) {
+                    const entityRect = { x: entity.x - entity.size / 2, y: entity.y - entity.size / 2, width: entity.size, height: entity.size };
+                    if (checkCollision(projectileRect, entityRect)) {
+                        entity.takeDamage(this.damage);
+                        this.remove();
+                        return true; // Hit! Remove projectile
+                    }
+                }
+
+                return false; // Still active
+            }
+
+            remove() {
+                 if (this.element.parentNode) this.element.parentNode.removeChild(this.element);
+                 // Remove from game state array (handled in main loop)
+            }
+        }
+
+        // --- Item Class ---
+        class Item {
+            constructor(x, y, itemType, weaponType = null) {
+                this.x = x;
+                this.y = y;
+                this.size = ITEM_SIZE;
+                this.width = ITEM_SIZE;
+                this.height = ITEM_SIZE;
+                this.itemType = itemType; // 'weapon' or 'healthkit'
+                this.weaponType = weaponType; // 'AR', 'SMG', 'Shotgun' if itemType is 'weapon'
+
+                this.element = document.createElement('div');
+                this.element.classList.add('item');
+                this.element.style.width = `${this.size}px`;
+                this.element.style.height = `${this.size}px`;
+                this.element.style.left = `${x - this.size / 2}px`;
+                this.element.style.top = `${y - this.size / 2}px`;
+
+                if (itemType === 'weapon') {
+                     this.element.classList.add(`item-weapon-${weaponType.toLowerCase()}`);
+                } else if (itemType === 'healthkit') {
+                    this.element.classList.add('item-healthkit');
+                }
+
+                gameContainer.appendChild(this.element);
+            }
+
+            remove() {
+                if (this.element.parentNode) this.element.parentNode.removeChild(this.element);
+                // Removal from gameState.items handled in main loop
+            }
+        }
+
+         // --- Chest Class ---
+         class Chest {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.size = CHEST_SIZE;
+                 this.width = CHEST_SIZE;
+                 this.height = CHEST_SIZE;
+                this.opened = false;
+
+                this.element = document.createElement('div');
+                this.element.classList.add('chest');
+                this.element.style.width = `${this.size}px`;
+                this.element.style.height = `${this.size}px`;
+                 // Center the chest div on the grid point
+                this.element.style.left = `${x - this.size / 2}px`;
+                this.element.style.top = `${y - this.size / 2}px`;
+
+                gameContainer.appendChild(this.element);
+
+                // Add event listener for player interaction (e.g., click or proximity)
+                // For simplicity, we'll use proximity check in the player update loop
+            }
+
+            open() {
+                if (this.opened) return;
+                this.opened = true;
+                if (this.element.parentNode) this.element.parentNode.removeChild(this.element);
+
+                // Spawn loot
+                const numItems = getRandomInt(1, 2); // Drop 1 or 2 items
+                const weaponChoices = Object.keys(WEAPONS);
+                for (let i = 0; i < numItems; i++) {
+                    let itemType = 'weapon';
+                     let weaponType = null;
+                     // 30% chance for health kit if dropping 2 items, otherwise weapon
+                     if(i > 0 && Math.random() < 0.3) {
+                         itemType = 'healthkit';
+                     } else {
+                         weaponType = weaponChoices[getRandomInt(0, weaponChoices.length - 1)];
+                     }
+
+
+                    // Spawn item slightly offset from chest center
+                    const spawnX = this.x + getRandom(-15, 15);
+                    const spawnY = this.y + getRandom(-15, 15);
+                    const newItem = new Item(spawnX, spawnY, itemType, weaponType);
+                    gameState.items.push(newItem);
+                }
+                 // Remove chest from gameState.chests (handled in player update loop)
+            }
+         }
+
+         // --- Obstacle Function (using simple objects) ---
+         function createObstacle(x, y, width, height, isBush = false, isWall = false) {
+             const obstacle = {
+                 x, y, width, height, isBush, isWall,
+                 element: document.createElement('div')
+             };
+             obstacle.element.classList.add('obstacle');
+             if (isBush) obstacle.element.classList.add('bush');
+             if (isWall) obstacle.element.classList.add('wall');
+             obstacle.element.style.left = `${x}px`;
+             obstacle.element.style.top = `${y}px`;
+             obstacle.element.style.width = `${width}px`;
+             obstacle.element.style.height = `${height}px`;
+             gameContainer.appendChild(obstacle.element);
+             return obstacle;
+         }
+
+
+        // --- Game Initialization ---
+        function initGame() {
+            console.log("Initializing game...");
+            // Reset state
+            gameState = {
+                player: null,
+                ai: [],
+                projectiles: [],
+                items: [],
+                chests: [],
+                obstacles: [],
+                mapGrid: [],
+                keysDown: {},
+                mousePos: { x: 0, y: 0 },
+                isMouseDown: false,
+                gameTime: 0,
+                lastTimestamp: 0,
+                deltaTime: 0,
+                currentStormPhase: -1,
+                stormRadius: Math.max(MAP_WIDTH_PX, MAP_HEIGHT_PX) * 1.5, // Start larger than map
+                stormCenterX: MAP_WIDTH_PX / 2,
+                stormCenterY: MAP_HEIGHT_PX / 2,
+                nextStormRadius: Math.max(MAP_WIDTH_PX, MAP_HEIGHT_PX) * 1.5,
+                nextStormCenterX: MAP_WIDTH_PX / 2,
+                nextStormCenterY: MAP_HEIGHT_PX / 2,
+                stormTimer: STORM_PHASES[0].duration, // Initial wait time
+                isStormShrinking: false,
+                gameOver: false,
+                minimapAIDots: [],
+                isUsingHealthKit: false,
+                healthKitUseTimer: 0,
+            };
+
+            // Clear previous elements
+            gameContainer.innerHTML = ''; // Clear game area
+            minimapContainer.innerHTML = ''; // Clear minimap area (except player/storm templates if kept)
+             // Re-add storm circle and minimap player/storm elements as they are part of the base HTML structure
+            stormCircle.style.width = `${gameState.stormRadius * 2}px`;
+            stormCircle.style.height = `${gameState.stormRadius * 2}px`;
+             stormCircle.style.left = `${gameState.stormCenterX - gameState.stormRadius}px`;
+             stormCircle.style.top = `${gameState.stormCenterY - gameState.stormRadius}px`;
+            gameContainer.appendChild(stormCircle);
+
+            minimapPlayer.style.left = '0px';
+            minimapPlayer.style.top = '0px';
+             minimapStorm.style.width = '0px';
+             minimapStorm.style.height = '0px';
+             minimapContainer.appendChild(minimapPlayer);
+             minimapContainer.appendChild(minimapStorm);
+
+
+            // Set Game Container Size
+            gameContainer.style.width = `${MAP_WIDTH_PX}px`;
+            gameContainer.style.height = `${MAP_HEIGHT_PX}px`;
+
+            // --- Create Map Elements (Example: Random Obstacles) ---
+            const NUM_OBSTACLES = 50;
+            const NUM_BUSHES = 30;
+            const NUM_WALL_STRUCTURES = 5; // Number of simple 'house' like structures
+             const NUM_CHESTS = 40;
+
+
+             // Add water border (impassable) - simplified as just map bounds check for now
+             // Could add visual water tiles if using a grid system
+
+             // Add random obstacles
+            for (let i = 0; i < NUM_OBSTACLES; i++) {
+                const size = getRandom(OBSTACLE_MIN_SIZE, OBSTACLE_MAX_SIZE);
+                const x = getRandom(0, MAP_WIDTH_PX - size);
+                const y = getRandom(0, MAP_HEIGHT_PX - size);
+                // Ensure not too close to center spawn?
+                gameState.obstacles.push(createObstacle(x, y, size, size));
+            }
+
+             // Add random bushes
+             for (let i = 0; i < NUM_BUSHES; i++) {
+                const size = BUSH_SIZE;
+                const x = getRandom(0, MAP_WIDTH_PX - size);
+                const y = getRandom(0, MAP_HEIGHT_PX - size);
+                 gameState.obstacles.push(createObstacle(x, y, size, size, true));
+             }
+
+             // Add simple wall structures (e.g., L-shapes or rectangles)
+             for (let i = 0; i < NUM_WALL_STRUCTURES; i++) {
+                 const startX = getRandom(TILE_SIZE * 5, MAP_WIDTH_PX - TILE_SIZE * 5);
+                 const startY = getRandom(TILE_SIZE * 5, MAP_HEIGHT_PX - TILE_SIZE * 5);
+                 const structureType = getRandomInt(1,3); // 1: L-shape, 2: U-shape, 3: Rectangle
+
+                 if (structureType === 1) { // L-shape
+                     const length1 = getRandom(WALL_MIN_LENGTH, WALL_MAX_LENGTH);
+                     const length2 = getRandom(WALL_MIN_LENGTH, WALL_MAX_LENGTH);
+                     const orientation = getRandomInt(1, 4); // 4 possible L orientations
+                     if (orientation === 1) {
+                        gameState.obstacles.push(createObstacle(startX, startY, length1, WALL_THICKNESS, false, true));
+                        gameState.obstacles.push(createObstacle(startX, startY + WALL_THICKNESS, WALL_THICKNESS, length2 - WALL_THICKNESS, false, true));
+                     } else if (orientation === 2){
+                         gameState.obstacles.push(createObstacle(startX, startY, length1, WALL_THICKNESS, false, true));
+                         gameState.obstacles.push(createObstacle(startX + length1 - WALL_THICKNESS, startY + WALL_THICKNESS, WALL_THICKNESS, length2 - WALL_THICKNESS, false, true));
+                     } else if (orientation === 3) {
+                         gameState.obstacles.push(createObstacle(startX, startY + length2 - WALL_THICKNESS, length1, WALL_THICKNESS, false, true));
+                        gameState.obstacles.push(createObstacle(startX, startY, WALL_THICKNESS, length2 - WALL_THICKNESS, false, true));
+                     } else {
+                         gameState.obstacles.push(createObstacle(startX, startY + length2 - WALL_THICKNESS, length1, WALL_THICKNESS, false, true));
+                         gameState.obstacles.push(createObstacle(startX + length1 - WALL_THICKNESS, startY, WALL_THICKNESS, length2 - WALL_THICKNESS, false, true));
+                     }
+                 } else if (structureType === 2) { // U-shape
+                     const length1 = getRandom(WALL_MIN_LENGTH, WALL_MAX_LENGTH);
+                     const length2 = getRandom(WALL_MIN_LENGTH, WALL_MAX_LENGTH);
+                     const isOpenTop = Math.random() < 0.5;
+                     if(isOpenTop) {
+                         gameState.obstacles.push(createObstacle(startX, startY, WALL_THICKNESS, length2, false, true)); // Left
+                         gameState.obstacles.push(createObstacle(startX + length1 - WALL_THICKNESS, startY, WALL_THICKNESS, length2, false, true)); // Right
+                         gameState.obstacles.push(createObstacle(startX, startY + length2 - WALL_THICKNESS, length1, WALL_THICKNESS, false, true)); // Bottom
+                     } else {
+                          gameState.obstacles.push(createObstacle(startX, startY, WALL_THICKNESS, length2, false, true)); // Left
+                         gameState.obstacles.push(createObstacle(startX + length1 - WALL_THICKNESS, startY, WALL_THICKNESS, length2, false, true)); // Right
+                         gameState.obstacles.push(createObstacle(startX, startY, length1, WALL_THICKNESS, false, true)); // Top
+                     }
+                 } else { // Rectangle
+                      const width = getRandom(WALL_MIN_LENGTH, WALL_MAX_LENGTH);
+                      const height = getRandom(WALL_MIN_LENGTH, WALL_MAX_LENGTH);
+                       gameState.obstacles.push(createObstacle(startX, startY, width, WALL_THICKNESS, false, true)); // Top
+                       gameState.obstacles.push(createObstacle(startX, startY + height - WALL_THICKNESS, width, WALL_THICKNESS, false, true)); // Bottom
+                       gameState.obstacles.push(createObstacle(startX, startY + WALL_THICKNESS, WALL_THICKNESS, height - (2*WALL_THICKNESS), false, true)); // Left
+                       gameState.obstacles.push(createObstacle(startX + width - WALL_THICKNESS, startY + WALL_THICKNESS, WALL_THICKNESS, height - (2*WALL_THICKNESS), false, true)); // Right
+                 }
+             }
+
+
+                        // --- Spawn Player ---
+                        let playerStartX, playerStartY, validPlayerSpawn;
+            let playerSpawnAttempts = 0;
+            const maxPlayerSpawnAttempts = 100; // Safety limit
+
+            console.log("Finding valid player spawn...");
+            do {
+                validPlayerSpawn = true;
+                // Generate potential spawn point (wider area than before)
+                playerStartX = MAP_WIDTH_PX / 2 + getRandom(-MAP_WIDTH_PX / 3, MAP_WIDTH_PX / 3);
+                playerStartY = MAP_HEIGHT_PX / 2 + getRandom(-MAP_HEIGHT_PX / 3, MAP_HEIGHT_PX / 3);
+
+                // Ensure coordinates are within map bounds (safety check)
+                 playerStartX = Math.max(PLAYER_SIZE / 2, Math.min(MAP_WIDTH_PX - PLAYER_SIZE / 2, playerStartX));
+                 playerStartY = Math.max(PLAYER_SIZE / 2, Math.min(MAP_HEIGHT_PX - PLAYER_SIZE / 2, playerStartY));
+
+
+                // Create a hypothetical player rectangle at this spawn point
+                const playerRect = {
+                    x: playerStartX - PLAYER_SIZE / 2,
+                    y: playerStartY - PLAYER_SIZE / 2,
+                    width: PLAYER_SIZE,
+                    height: PLAYER_SIZE
+                };
+
+                // Check against all non-bush obstacles
+                for (const obs of gameState.obstacles) {
+                    if (!obs.isBush) { // Don't worry about spawning *in* a bush initially
+                        const obstacleRect = { x: obs.x, y: obs.y, width: obs.width, height: obs.height };
+                        if (checkCollision(playerRect, obstacleRect)) {
+                            validPlayerSpawn = false;
+                             // console.log(`Player spawn attempt (${playerStartX.toFixed(0)}, ${playerStartY.toFixed(0)}) collided with obstacle.`);
+                            break; // Collision found, try a new spot
+                        }
+                    }
+                }
+                playerSpawnAttempts++;
+
+            } while (!validPlayerSpawn && playerSpawnAttempts < maxPlayerSpawnAttempts);
+
+            if (!validPlayerSpawn) {
+                console.warn(`Could not find a clear spawn location for the player after ${maxPlayerSpawnAttempts} attempts. Spawning at map center as fallback.`);
+                // Fallback to exact center if no clear spot is found quickly
+                playerStartX = MAP_WIDTH_PX / 2;
+                playerStartY = MAP_HEIGHT_PX / 2;
+            }
+
+            console.log(`Player spawned at (${playerStartX.toFixed(0)}, ${playerStartY.toFixed(0)})`);
+            gameState.player = new Entity(playerStartX, playerStartY, PLAYER_SIZE, '#007bff', 'player');
+            gameState.player.healthKits = 0; // Start with 0 kits
+            // --- Spawn AI ---
+             const NUM_AI = 10;
+             for (let i = 0; i < NUM_AI; i++) {
+                 let spawnX, spawnY, validSpawn;
+                 let attempts = 0;
+                 do {
+                     validSpawn = true;
+                     spawnX = getRandom(AI_SIZE, MAP_WIDTH_PX - AI_SIZE);
+                     spawnY = getRandom(AI_SIZE, MAP_HEIGHT_PX - AI_SIZE);
+                     // Basic check: ensure not spawning inside an obstacle
+                     const aiRect = { x: spawnX - AI_SIZE / 2, y: spawnY - AI_SIZE / 2, width: AI_SIZE, height: AI_SIZE };
+                     for (const obs of gameState.obstacles) {
+                         if (!obs.isBush && checkCollision(aiRect, { x: obs.x, y: obs.y, width: obs.width, height: obs.height })) {
+                             validSpawn = false;
+                             break;
+                         }
+                     }
+                     // Also check distance from player start
+                     if (getDistance(spawnX, spawnY, playerStartX, playerStartY) < TILE_SIZE * 5) {
+                         validSpawn = false;
+                     }
+                     attempts++;
+                 } while (!validSpawn && attempts < 50); // Limit attempts to prevent infinite loop
+
+                 if (validSpawn) {
+                     const ai = new Entity(spawnX, spawnY, AI_SIZE, '#dc3545', 'ai');
+                     gameState.ai.push(ai);
+                     // Add minimap dot for AI
+                     const aiDot = document.createElement('div');
+                     aiDot.classList.add('minimap-ai');
+                     minimapContainer.appendChild(aiDot);
+                     gameState.minimapAIDots.push(aiDot);
+                 } else {
+                     console.warn("Could not find valid spawn for AI", i);
+                 }
+             }
+
+            // --- Spawn Chests ---
+            for (let i = 0; i < NUM_CHESTS; i++) {
+                 let spawnX, spawnY, validSpawn;
+                 let attempts = 0;
+                 do {
+                    validSpawn = true;
+                    spawnX = getRandom(CHEST_SIZE, MAP_WIDTH_PX - CHEST_SIZE);
+                    spawnY = getRandom(CHEST_SIZE, MAP_HEIGHT_PX - CHEST_SIZE);
+                    const chestRect = { x: spawnX - CHEST_SIZE / 2, y: spawnY - CHEST_SIZE / 2, width: CHEST_SIZE, height: CHEST_SIZE };
+                    for (const obs of gameState.obstacles) {
+                         if (!obs.isBush && checkCollision(chestRect, { x: obs.x, y: obs.y, width: obs.width, height: obs.height })) {
+                            validSpawn = false;
+                            break;
+                        }
+                    }
+                     // Optional: Check distance from other chests?
+                    attempts++;
+                 } while (!validSpawn && attempts < 50);
+
+                 if(validSpawn) {
+                    gameState.chests.push(new Chest(spawnX, spawnY));
+                 } else {
+                      console.warn("Could not find valid spawn for Chest", i);
+                 }
+            }
+
+
+            // Initial UI Update
+            updatePlayerUI();
+            updatePlayerCountUI();
+            updateStormUI();
+             hideEndScreen(); // Ensure end screen is hidden
+
+            // Add Event Listeners
+            addEventListeners();
+
+            // Start Game Loop
+            gameState.lastTimestamp = performance.now();
+            gameLoop(gameState.lastTimestamp);
+            console.log("Game initialized and loop started.");
+        }
+
+        // --- Event Listeners ---
+        function addEventListeners() {
+            // Keyboard
+            window.addEventListener('keydown', (e) => {
+                gameState.keysDown[e.key.toLowerCase()] = true;
+                // Use Health Kit Key
+                if (e.key.toLowerCase() === 'e' && gameState.player && !gameState.isUsingHealthKit && gameState.player.healthKits > 0) {
+                    startUsingHealthKit();
+                }
+            });
+            window.addEventListener('keyup', (e) => {
+                gameState.keysDown[e.key.toLowerCase()] = false;
+                 // Stop using health kit if key is released or movement key pressed
+                 if (e.key.toLowerCase() === 'e' || ['w', 'a', 's', 'd'].includes(e.key.toLowerCase())) {
+                     cancelUsingHealthKit();
+                 }
+            });
+
+            // Mouse
+            window.addEventListener('mousemove', (e) => {
+                const rect = gameContainer.getBoundingClientRect();
+                gameState.mousePos.x = e.clientX - rect.left;
+                gameState.mousePos.y = e.clientY - rect.top;
+            });
+            window.addEventListener('mousedown', (e) => {
+                if (e.button === 0) { // Left mouse button
+                    gameState.isMouseDown = true;
+                     cancelUsingHealthKit(); // Cancel medkit if shooting
+                }
+            });
+            window.addEventListener('mouseup', (e) => {
+                 if (e.button === 0) {
+                    gameState.isMouseDown = false;
+                 }
+            });
+
+            // Touch (Basic Implementation)
+             if ('ontouchstart' in window) {
+                 touchControls.style.display = 'block'; // Show touch controls
+
+                 // Joystick
+                 joystickArea.addEventListener('touchstart', (e) => {
+                     e.preventDefault();
+                     joystickActive = true;
+                     const touch = e.touches[0];
+                     const rect = joystickArea.getBoundingClientRect();
+                     joystickStartX = rect.left + rect.width / 2;
+                     joystickStartY = rect.top + rect.height / 2;
+                     joystickCurrentX = touch.clientX;
+                     joystickCurrentY = touch.clientY;
+                      cancelUsingHealthKit(); // Cancel kit on move
+                 }, { passive: false });
+
+                 joystickArea.addEventListener('touchmove', (e) => {
+                     e.preventDefault();
+                     if (!joystickActive) return;
+                     const touch = e.touches[0];
+                     joystickCurrentX = touch.clientX;
+                     joystickCurrentY = touch.clientY;
+                 }, { passive: false });
+
+                 window.addEventListener('touchend', (e) => { // Use window to catch finger leaving the joystick area
+                      // Check if the touch causing the end was related to the joystick
+                     let relatedToEnd = false;
+                     for(let i=0; i < e.changedTouches.length; i++){
+                         // Heuristic: Check if touch was near joystick center initially or currently
+                         const touch = e.changedTouches[i];
+                         const distFromCenter = getDistance(touch.clientX, touch.clientY, joystickStartX, joystickStartY);
+                         if(distFromCenter < MAX_JOYSTICK_DIST * 2) { // Generous range
+                              relatedToEnd = true;
+                              break;
+                         }
+                     }
+
+                     if(joystickActive && relatedToEnd) {
+                         joystickActive = false;
+                         joystickThumb.style.transform = 'translate(-50%, -50%)'; // Reset thumb
+                     }
+                 });
+
+
+                 // Shoot Button
+                 shootButton.addEventListener('touchstart', (e) => {
+                     e.preventDefault();
+                     touchShootActive = true;
+                      cancelUsingHealthKit(); // Cancel kit on shoot
+                 }, { passive: false });
+                 shootButton.addEventListener('touchend', (e) => {
+                     e.preventDefault();
+                     touchShootActive = false;
+                 });
+
+                 // Health Kit Button
+                 healthKitButton.addEventListener('touchstart', (e) => {
+                     e.preventDefault();
+                     if (gameState.player && !gameState.isUsingHealthKit && gameState.player.healthKits > 0) {
+                         startUsingHealthKit();
+                     }
+                     // We don't set touchUseKitActive here, action is instant start
+                 }, { passive: false });
+                 // No touchend needed specifically unless we wanted hold-to-use mechanic
+            }
+
+            // Restart Button
+            restartButton.addEventListener('click', initGame);
+        }
+
+
+        // --- Health Kit Logic ---
+        function startUsingHealthKit() {
+            if (gameState.isUsingHealthKit || !gameState.player || gameState.player.healthKits <= 0 || gameState.player.health >= MAX_HEALTH) return;
+
+            console.log("Starting to use Health Kit...");
+            gameState.isUsingHealthKit = true;
+            gameState.healthKitUseTimer = HEALTH_KIT_USE_TIME;
+             // Add visual indicator? Maybe change player color slightly?
+            gameState.player.element.style.boxShadow = '0 0 10px 5px lightgreen'; // Example indicator
+             // Stop player movement while using
+             gameState.player.vx = 0;
+             gameState.player.vy = 0;
+        }
+
+        function updateHealthKitUsage(dt_ms) {
+            if (!gameState.isUsingHealthKit) return;
+
+            gameState.healthKitUseTimer -= dt_ms;
+
+            if (gameState.healthKitUseTimer <= 0) {
+                finishUsingHealthKit();
+            }
+        }
+
+        function finishUsingHealthKit() {
+            if (!gameState.isUsingHealthKit || !gameState.player) return;
+
+             console.log("Finished using Health Kit.");
+            gameState.player.health = Math.min(MAX_HEALTH, gameState.player.health + HEALTH_KIT_HEAL_AMOUNT);
+            gameState.player.healthKits--;
+            gameState.isUsingHealthKit = false;
+            gameState.healthKitUseTimer = 0;
+             gameState.player.element.style.boxShadow = ''; // Remove indicator
+            updatePlayerUI();
+        }
+
+        function cancelUsingHealthKit() {
+             if (gameState.isUsingHealthKit) {
+                 console.log("Cancelled Health Kit usage.");
+                 gameState.isUsingHealthKit = false;
+                 gameState.healthKitUseTimer = 0;
+                  if(gameState.player) gameState.player.element.style.boxShadow = ''; // Remove indicator
+             }
+        }
+
+
+        // --- Update Functions ---
+        function updatePlayer(dt) {
+            if (!gameState.player || gameState.gameOver || gameState.isUsingHealthKit) return;
+
+            let moveX = 0;
+            let moveY = 0;
+
+            // Keyboard Input
+            if (gameState.keysDown['w']) moveY -= 1;
+            if (gameState.keysDown['s']) moveY += 1;
+            if (gameState.keysDown['a']) moveX -= 1;
+            if (gameState.keysDown['d']) moveX += 1;
+
+            // Touch Input (Joystick)
+            if (joystickActive) {
+                const dx = joystickCurrentX - joystickStartX;
+                const dy = joystickCurrentY - joystickStartY;
+                const dist = Math.min(MAX_JOYSTICK_DIST, getDistance(0, 0, dx, dy));
+                const angle = Math.atan2(dy, dx);
+
+                const clampedDx = Math.cos(angle) * dist;
+                const clampedDy = Math.sin(angle) * dist;
+
+                 moveX = clampedDx / MAX_JOYSTICK_DIST; // Normalize
+                 moveY = clampedDy / MAX_JOYSTICK_DIST;
+
+                 // Update joystick thumb position visually
+                 joystickThumb.style.transform = `translate(calc(-50% + ${clampedDx}px), calc(-50% + ${clampedDy}px))`;
+            }
+
+
+            // Normalize diagonal movement
+            const moveMagnitude = Math.sqrt(moveX * moveX + moveY * moveY);
+            if (moveMagnitude > 0) {
+                moveX = (moveX / moveMagnitude);
+                moveY = (moveY / moveMagnitude);
+            }
+
+            gameState.player.vx = moveX * PLAYER_SPEED;
+            gameState.player.vy = moveY * PLAYER_SPEED;
+
+            // Aiming - Update player angle based on mouse position
+            gameState.player.angle = getAngle(gameState.player.x, gameState.player.y, gameState.mousePos.x, gameState.mousePos.y);
+
+            // Shooting
+            if (gameState.isMouseDown || touchShootActive) {
+                 // Player shoots towards the mouse cursor
+                 gameState.player.shoot(gameState.mousePos.x, gameState.mousePos.y);
+            }
+
+            // Update player entity (movement, collision, rendering)
+            gameState.player.update(dt);
+
+             // Check for item pickup
+             const playerRect = { x: gameState.player.x - gameState.player.size / 2, y: gameState.player.y - gameState.player.size / 2, width: gameState.player.size, height: gameState.player.size };
+             for (let i = gameState.items.length - 1; i >= 0; i--) {
+                 const item = gameState.items[i];
+                 const itemRect = { x: item.x - item.size / 2, y: item.y - item.size / 2, width: item.size, height: item.size };
+                 if (checkCollision(playerRect, itemRect)) {
+                     if (gameState.player.pickupItem(item)) { // If pickup was successful
+                        item.remove();
+                        gameState.items.splice(i, 1);
+                     }
+                 }
+             }
+
+             // Check for chest opening (proximity based)
+             const interactDist = gameState.player.size * 1.5; // How close to open
+             for (let i = gameState.chests.length - 1; i >= 0; i--) {
+                 const chest = gameState.chests[i];
+                 if (!chest.opened) {
+                      const dist = getDistance(gameState.player.x, gameState.player.y, chest.x, chest.y);
+                      if (dist < interactDist) {
+                          chest.open();
+                          gameState.chests.splice(i, 1); // Remove from active chests
+                          // Add a sound effect here ideally
+                      }
+                 }
+             }
+        }
+
+        function updateAI(dt) {
+             if (gameState.gameOver) return;
+
+            gameState.ai.forEach(ai => {
+                if (!ai || ai.health <= 0) return;
+
+                // Simple AI: Move towards safe zone center, shoot player if visible and close
+                let targetX = gameState.nextStormCenterX;
+                let targetY = gameState.nextStormCenterY;
+                let isShooting = false;
+
+                // Check if player is visible and within range
+                if (gameState.player && gameState.player.health > 0 && !gameState.player.isHiding) {
+                    const distToPlayer = getDistance(ai.x, ai.y, gameState.player.x, gameState.player.y);
+                    const weaponRange = ai.weapon ? WEAPONS[ai.weapon].range : 100; // Default sight range if no weapon
+
+                    if (distToPlayer < weaponRange * 1.2) { // Look slightly beyond weapon range
+                         // Basic Line of Sight Check (Raycast against obstacles)
+                         if (hasLineOfSight(ai.x, ai.y, gameState.player.x, gameState.player.y)) {
+                            targetX = gameState.player.x;
+                            targetY = gameState.player.y;
+                            if (distToPlayer < weaponRange && ai.weapon) {
+                                isShooting = true;
+                                ai.shoot(gameState.player.x, gameState.player.y);
+                            }
+                        }
+                    }
+                }
+
+                // Update AI angle towards target
+                ai.angle = getAngle(ai.x, ai.y, targetX, targetY);
+
+                // Movement
+                if (!isShooting) {
+                    const angleToTarget = ai.angle; // Already calculated
+                    ai.vx = Math.cos(angleToTarget) * AI_SPEED;
+                    ai.vy = Math.sin(angleToTarget) * AI_SPEED;
+                } else {
+                    ai.vx = 0; // Stop moving when shooting
+                    ai.vy = 0;
+                }
+
+                // Basic AI weapon pickup (if they walk over one and don't have one)
+                 if(!ai.weapon) {
+                     const aiRect = { x: ai.x - ai.size / 2, y: ai.y - ai.size / 2, width: ai.size, height: ai.size };
+                     for (let i = gameState.items.length - 1; i >= 0; i--) {
+                         const item = gameState.items[i];
+                         if(item.itemType === 'weapon') {
+                             const itemRect = { x: item.x - item.size / 2, y: item.y - item.size / 2, width: item.size, height: item.size };
+                             if (checkCollision(aiRect, itemRect)) {
+                                 if (ai.pickupItem(item)) { // If pickup was successful
+                                     item.remove();
+                                     gameState.items.splice(i, 1);
+                                     break; // Pick up only one
+                                 }
+                             }
+                         }
+                     }
+                 }
+
+
+                ai.update(dt);
+            });
+        }
+
+        // Basic Line of Sight Check (Simple - checks midpoint against obstacles)
+        // A proper implementation would use raycasting with steps or Bresenham's line algorithm.
+        function hasLineOfSight(x1, y1, x2, y2) {
+            const dx = x2 - x1;
+            const dy = y2 - y1;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            const steps = Math.max(1, Math.floor(dist / (TILE_SIZE / 2))); // Check every half tile
+
+            for (let i = 1; i <= steps; i++) {
+                const checkX = x1 + (dx / steps) * i;
+                const checkY = y1 + (dy / steps) * i;
+                const pointRect = { x: checkX - 1, y: checkY - 1, width: 2, height: 2 }; // Small rect for point
+
+                for (const obstacle of gameState.obstacles) {
+                    // Ignore bushes for LOS blocking
+                    if (!obstacle.isBush) {
+                         const obstacleRect = { x: obstacle.x, y: obstacle.y, width: obstacle.width, height: obstacle.height };
+                         if (checkCollision(pointRect, obstacleRect)) {
+                             return false; // Line blocked
+                         }
+                    }
+                }
+                 // Check map boundaries (water, etc. - if using a grid)
+                 // const tileX = Math.floor(checkX / TILE_SIZE);
+                 // const tileY = Math.floor(checkY / TILE_SIZE);
+                 // if (gameState.mapGrid[tileY]?.[tileX]?.type === 'water' || ...) return false;
+            }
+            return true; // No blocking obstacles found
+        }
+
+
+        function updateProjectiles(dt) {
+            for (let i = gameState.projectiles.length - 1; i >= 0; i--) {
+                const projectile = gameState.projectiles[i];
+                const removed = projectile.update(dt);
+                if (removed) {
+                    gameState.projectiles.splice(i, 1);
+                }
+            }
+        }
+
+        function createProjectile(x, y, angle, weaponStats, shooter) {
+            const projectile = new Projectile(x, y, angle, weaponStats, shooter);
+            gameState.projectiles.push(projectile);
+        }
+
+        function updateStorm(dt) {
+             if (gameState.gameOver) return;
+             const dt_ms = dt * 1000; // Convert dt to milliseconds for timer
+
+             gameState.stormTimer -= dt;
+
+             if (gameState.stormTimer <= 0) {
+                 if (!gameState.isStormShrinking) {
+                     // Start shrinking
+                     gameState.currentStormPhase++;
+                     const currentPhaseIndex = Math.min(gameState.currentStormPhase, STORM_PHASES.length - 1);
+                     const nextPhaseIndex = Math.min(gameState.currentStormPhase + 1, STORM_PHASES.length - 1);
+                     const currentPhase = STORM_PHASES[currentPhaseIndex];
+                     const nextPhase = STORM_PHASES[nextPhaseIndex];
+
+                     gameState.isStormShrinking = true;
+                     gameState.stormTimer = nextPhase.duration; // Time it takes to shrink
+
+                     // Calculate next circle position (randomly within current)
+                     const currentRadius = gameState.stormRadius;
+                     const nextRadius = Math.max(MAP_WIDTH_PX, MAP_HEIGHT_PX) / 2 * nextPhase.radiusFraction;
+                     gameState.nextStormRadius = nextRadius;
+
+                     // Ensure next center keeps the circle mostly within the previous one
+                     const maxOffset = currentRadius - nextRadius;
+                     const angle = getRandom(0, Math.PI * 2);
+                     const offset = getRandom(0, maxOffset * 0.7); // Don't always go to the edge
+
+                     gameState.nextStormCenterX = gameState.stormCenterX + Math.cos(angle) * offset;
+                     gameState.nextStormCenterY = gameState.stormCenterY + Math.sin(angle) * offset;
+
+                      // Clamp next center to prevent going too far off map (optional)
+                      gameState.nextStormCenterX = Math.max(nextRadius, Math.min(MAP_WIDTH_PX - nextRadius, gameState.nextStormCenterX));
+                      gameState.nextStormCenterY = Math.max(nextRadius, Math.min(MAP_HEIGHT_PX - nextRadius, gameState.nextStormCenterY));
+
+                     console.log(`Storm Phase ${gameState.currentStormPhase + 1} starting. Shrinking to ${Math.round(nextRadius)}px radius in ${nextPhase.duration}s.`);
+
+                 } else {
+                     // Finish shrinking
+                     gameState.isStormShrinking = false;
+                     gameState.stormRadius = gameState.nextStormRadius;
+                     gameState.stormCenterX = gameState.nextStormCenterX;
+                     gameState.stormCenterY = gameState.nextStormCenterY;
+
+                     const currentPhaseIndex = Math.min(gameState.currentStormPhase + 1, STORM_PHASES.length - 1);
+                     const currentPhase = STORM_PHASES[currentPhaseIndex];
+                      // Set timer for the *wait* period before the next shrink (if there is one)
+                     gameState.stormTimer = currentPhase.duration; // This assumes duration is wait time *then* shrink time. Adjust based on desired behavior. Let's assume phase duration includes wait *and* shrink.
+                      // Reinterpret: Phase duration is the total time for that phase (wait + shrink). Let's make duration the wait time.
+                      const waitTime = STORM_PHASES[Math.min(gameState.currentStormPhase, STORM_PHASES.length - 1)].duration; // Use previous phase's duration as wait time
+                      gameState.stormTimer = waitTime;
+
+
+                     console.log(`Storm reached Phase ${gameState.currentStormPhase + 1}. Waiting ${Math.round(gameState.stormTimer)}s.`);
+                 }
+             }
+
+             // Apply damage to entities outside the CURRENT storm circle
+             if (gameState.currentStormPhase >= 0) { // Only apply damage after first phase starts
+                 const currentPhaseData = STORM_PHASES[Math.min(gameState.currentStormPhase, STORM_PHASES.length - 1)];
+                 const damagePerSecond = currentPhaseData.damage;
+                 const entities = [gameState.player, ...gameState.ai].filter(e => e);
+
+                 entities.forEach(entity => {
+                     const distFromCenter = getDistance(entity.x, entity.y, gameState.stormCenterX, gameState.stormCenterY);
+                     if (distFromCenter > gameState.stormRadius) {
+                         entity.takeDamage(damagePerSecond * dt);
+                     }
+                 });
+             }
+
+             updateStormUI(); // Update UI elements
+             updateMinimapStorm(); // Update minimap visual
+        }
+
+        // --- UI Update Functions ---
+        function updatePlayerUI() {
+            if (!gameState.player) {
+                healthBarUiInner.style.width = '0%';
+                weaponInfo.textContent = 'Weapon: None';
+                healthKitInfo.textContent = 'Health Kits: 0';
+                return;
+            }
+            const healthPercent = Math.max(0, (gameState.player.health / gameState.player.maxHealth) * 100);
+            healthBarUiInner.style.width = `${healthPercent}%`;
+            weaponInfo.textContent = `Weapon: ${gameState.player.weapon ? WEAPONS[gameState.player.weapon].name : 'None'}`;
+             healthKitInfo.textContent = `Health Kits: ${gameState.player.healthKits}`;
+        }
+
+        function updatePlayerCountUI() {
+            const count = (gameState.player ? 1 : 0) + gameState.ai.length;
+            playerCount.textContent = `Players Left: ${count}`;
+        }
+
+        function updateStormUI() {
+            let timerText = '';
+            if (gameState.currentStormPhase < 0) {
+                timerText = `Starts in ${Math.ceil(gameState.stormTimer)}s`;
+            } else {
+                const phaseNum = gameState.currentStormPhase + 1;
+                if (gameState.isStormShrinking) {
+                    timerText = `Shrinking Phase ${phaseNum}: ${Math.ceil(gameState.stormTimer)}s`;
+                } else {
+                    timerText = `Phase ${phaseNum} closes in ${Math.ceil(gameState.stormTimer)}s`;
+                }
+            }
+            stormTimer.textContent = `Storm: ${timerText}`;
+
+            // Update the main storm visual
+            stormCircle.style.width = `${gameState.stormRadius * 2}px`;
+            stormCircle.style.height = `${gameState.stormRadius * 2}px`;
+            stormCircle.style.left = `${gameState.stormCenterX - gameState.stormRadius}px`;
+            stormCircle.style.top = `${gameState.stormCenterY - gameState.stormRadius}px`;
+        }
+
+        function updateMinimap() {
+            if (gameState.gameOver) return;
+             const minimapWidth = minimapContainer.offsetWidth;
+             const minimapHeight = minimapContainer.offsetHeight;
+
+             // Update Player Dot
+             if (gameState.player) {
+                 const minimapX = (gameState.player.x / MAP_WIDTH_PX) * minimapWidth - minimapPlayer.offsetWidth / 2;
+                 const minimapY = (gameState.player.y / MAP_HEIGHT_PX) * minimapHeight - minimapPlayer.offsetHeight / 2;
+                 minimapPlayer.style.left = `${minimapX}px`;
+                 minimapPlayer.style.top = `${minimapY}px`;
+             }
+
+             // Update AI Dots
+            gameState.ai.forEach((ai, index) => {
+                if (ai && gameState.minimapAIDots[index]) {
+                     const dot = gameState.minimapAIDots[index];
+                     const minimapX = (ai.x / MAP_WIDTH_PX) * minimapWidth - dot.offsetWidth / 2;
+                     const minimapY = (ai.y / MAP_HEIGHT_PX) * minimapHeight - dot.offsetHeight / 2;
+                     dot.style.left = `${minimapX}px`;
+                     dot.style.top = `${minimapY}px`;
+                }
+            });
+
+            updateMinimapStorm(); // Also update storm on minimap
+        }
+
+        function updateMinimapStorm() {
+            const minimapWidth = minimapContainer.offsetWidth;
+            const minimapHeight = minimapContainer.offsetHeight;
+
+            const minimapRadius = (gameState.stormRadius / MAP_WIDTH_PX) * minimapWidth; // Assuming square map scaling
+            const minimapCenterX = (gameState.stormCenterX / MAP_WIDTH_PX) * minimapWidth;
+            const minimapCenterY = (gameState.stormCenterY / MAP_HEIGHT_PX) * minimapHeight;
+
+            minimapStorm.style.width = `${minimapRadius * 2}px`;
+            minimapStorm.style.height = `${minimapRadius * 2}px`;
+            minimapStorm.style.left = `${minimapCenterX - minimapRadius}px`;
+            minimapStorm.style.top = `${minimapCenterY - minimapRadius}px`;
+        }
+
+         function showEndScreen(message) {
+             messageText.textContent = message;
+             messageScreen.style.display = 'flex';
+         }
+
+         function hideEndScreen() {
+             messageScreen.style.display = 'none';
+         }
+
+
+        // --- Game Loop ---
+        let animationFrameId = null;
+        function gameLoop(timestamp) {
+            if (gameState.gameOver) {
+                 cancelAnimationFrame(animationFrameId); // Stop the loop
+                 console.log("Game Over. Loop stopped.");
+                 return;
+            }
+
+            gameState.deltaTime = (timestamp - gameState.lastTimestamp) / 1000; // Delta time in seconds
+            gameState.lastTimestamp = timestamp;
+            gameState.gameTime += gameState.deltaTime * 1000; // gameTime in ms
+
+             const dt = gameState.deltaTime;
+             const dt_ms = dt * 1000;
+
+            // 1. Handle Input & Player Update
+            updatePlayer(dt); // Includes movement, aiming, shooting, item pickup
+
+            // 2. Update AI
+            updateAI(dt);
+
+            // 3. Update Projectiles
+            updateProjectiles(dt);
+
+            // 4. Update Health Kit Usage
+            updateHealthKitUsage(dt_ms);
+
+             // 5. Update Storm
+             updateStorm(dt);
+
+            // 6. Update UI & Minimap
+            // Player UI updated within player logic or on damage/pickup
+            updatePlayerCountUI(); // Update count in case AI died
+            // Storm UI updated in updateStorm
+            updateMinimap();
+
+            // 7. Check Win/Loss (handled within entity.die)
+
+            // 8. Request Next Frame
+            animationFrameId = requestAnimationFrame(gameLoop);
+        }
+
+        // --- Start the Game ---
+        initGame();
+
+    </script>
+</body>
+</html>
