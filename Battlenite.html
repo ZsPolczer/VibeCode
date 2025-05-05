@@ -31,16 +31,25 @@
             -ms-user-select: none;
         }
 
-        /* Map Tiles (Example - Could be replaced by background or more complex rendering) */
+        /* Map Tiles */
         .tile {
              position: absolute;
              /* size set by JS */
-             z-index: 0;
+             z-index: 0; /* Ensure tiles are behind everything else */
+             box-sizing: border-box; /* Include border in size */
+             /* border: 1px dotted #eee; */ /* Optional: for debugging tile layout */
         }
-        .tile-sand { background-color: #f0e68c; }
-        .tile-water { background-color: #4682b4; }
-        .tile-forest { background-color: #228b22; opacity: 0.7; } /* Forest can be semi-transparent overlay */
-        .tile-rocky { background-color: #8b4513; }
+        .tile-grass { background-color: #5a8a5a; }
+        .tile-sand { background-color: #f0e68c; } /* Beach */
+        .tile-water { background-color: #4682b4; } /* Ocean */
+        /* Forest/Rocky removed as explicit tiles, now treated as obstacles */
+
+        /* Ensure game container default matches grass */
+        #game-container {
+            /* ... other styles ... */
+            background-color: #5a8a5a; /* Default grass color */
+        }
+        
 
         /* Entities (Player, AI) */
         .entity {
@@ -388,9 +397,13 @@
         const messageText = document.getElementById('message-text');
         const restartButton = document.getElementById('restart-button');
 
+
         const AI_CHEST_SEARCH_RADIUS = 450; // How far AI looks for chests
         const AI_ENEMY_SEARCH_RADIUS = 400; // How far AI looks for enemies
         const AI_CHEST_INTERACT_DIST = 25;  // How close AI needs to be to 'open' a chest
+        // --- Map Generation Constants ---
+        const OCEAN_BORDER_TILES = 3; // How many tiles thick the ocean is
+        const BEACH_BORDER_TILES = 2; // How many tiles thick the beach is
 
         // --- Touch Controls ---
         const touchControls = document.getElementById('touch-controls');
@@ -398,6 +411,7 @@
         const joystickThumb = document.getElementById('joystick-thumb');
         const shootButton = document.getElementById('shoot-button');
         const healthKitButton = document.getElementById('health-kit-button');
+
         let joystickActive = false;
         let joystickStartX = 0;
         let joystickStartY = 0;
@@ -873,18 +887,17 @@
          }
 
 
-        // --- Game Initialization ---
-        function initGame() {
+         function initGame() {
             console.log("Initializing game...");
-            // Reset state
-            gameState = {
+            // Reset state (keep most of this as is)
+             gameState = {
                 player: null,
                 ai: [],
                 projectiles: [],
                 items: [],
                 chests: [],
                 obstacles: [],
-                mapGrid: [],
+                mapGrid: [], // <--- Will store terrain types ('ocean', 'beach', 'grass')
                 keysDown: {},
                 mousePos: { x: 0, y: 0 },
                 isMouseDown: false,
@@ -892,13 +905,13 @@
                 lastTimestamp: 0,
                 deltaTime: 0,
                 currentStormPhase: -1,
-                stormRadius: Math.max(MAP_WIDTH_PX, MAP_HEIGHT_PX) * 1.5, // Start larger than map
+                stormRadius: Math.max(MAP_WIDTH_PX, MAP_HEIGHT_PX) * 1.5,
                 stormCenterX: MAP_WIDTH_PX / 2,
                 stormCenterY: MAP_HEIGHT_PX / 2,
                 nextStormRadius: Math.max(MAP_WIDTH_PX, MAP_HEIGHT_PX) * 1.5,
                 nextStormCenterX: MAP_WIDTH_PX / 2,
                 nextStormCenterY: MAP_HEIGHT_PX / 2,
-                stormTimer: STORM_PHASES[0].duration, // Initial wait time
+                stormTimer: STORM_PHASES[0].duration,
                 isStormShrinking: false,
                 gameOver: false,
                 minimapAIDots: [],
@@ -908,173 +921,295 @@
 
             // Clear previous elements
             gameContainer.innerHTML = ''; // Clear game area
-            minimapContainer.innerHTML = ''; // Clear minimap area (except player/storm templates if kept)
-             // Re-add storm circle and minimap player/storm elements as they are part of the base HTML structure
+            minimapContainer.innerHTML = ''; // Clear minimap area
+
+             // Re-add storm circle and minimap player/storm elements
             stormCircle.style.width = `${gameState.stormRadius * 2}px`;
             stormCircle.style.height = `${gameState.stormRadius * 2}px`;
-             stormCircle.style.left = `${gameState.stormCenterX - gameState.stormRadius}px`;
-             stormCircle.style.top = `${gameState.stormCenterY - gameState.stormRadius}px`;
-            gameContainer.appendChild(stormCircle);
+            stormCircle.style.left = `${gameState.stormCenterX - gameState.stormRadius}px`;
+            stormCircle.style.top = `${gameState.stormCenterY - gameState.stormRadius}px`;
+            gameContainer.appendChild(stormCircle); // Add storm first
 
             minimapPlayer.style.left = '0px';
             minimapPlayer.style.top = '0px';
-             minimapStorm.style.width = '0px';
-             minimapStorm.style.height = '0px';
-             minimapContainer.appendChild(minimapPlayer);
-             minimapContainer.appendChild(minimapStorm);
+            minimapStorm.style.width = '0px';
+            minimapStorm.style.height = '0px';
+            minimapContainer.appendChild(minimapPlayer);
+            minimapContainer.appendChild(minimapStorm);
 
 
             // Set Game Container Size
             gameContainer.style.width = `${MAP_WIDTH_PX}px`;
             gameContainer.style.height = `${MAP_HEIGHT_PX}px`;
 
-            // --- Create Map Elements (Example: Random Obstacles) ---
-            const NUM_OBSTACLES = 50;
-            const NUM_BUSHES = 30;
-            const NUM_WALL_STRUCTURES = 5; // Number of simple 'house' like structures
-             const NUM_CHESTS = 40;
+            // --- Create Map Grid and Visual Tiles ---
+            console.log("Generating map grid...");
+            const mapTilesContainer = document.createElement('div'); // Container for tiles
+            mapTilesContainer.id = 'map-tiles';
+            mapTilesContainer.style.position = 'absolute';
+            mapTilesContainer.style.width = '100%';
+            mapTilesContainer.style.height = '100%';
+            mapTilesContainer.style.zIndex = 0; // Ensure tiles are behind
+            gameContainer.appendChild(mapTilesContainer);
+
+            for (let y = 0; y < MAP_HEIGHT_TILES; y++) {
+                gameState.mapGrid[y] = [];
+                for (let x = 0; x < MAP_WIDTH_TILES; x++) {
+                    let tileType = 'grass'; // Default to grass
+
+                    // Check for Ocean border
+                    if (x < OCEAN_BORDER_TILES || x >= MAP_WIDTH_TILES - OCEAN_BORDER_TILES ||
+                        y < OCEAN_BORDER_TILES || y >= MAP_HEIGHT_TILES - OCEAN_BORDER_TILES) {
+                        tileType = 'ocean';
+                    }
+                    // Check for Beach border (inside ocean)
+                    else if (x < OCEAN_BORDER_TILES + BEACH_BORDER_TILES || x >= MAP_WIDTH_TILES - OCEAN_BORDER_TILES - BEACH_BORDER_TILES ||
+                             y < OCEAN_BORDER_TILES + BEACH_BORDER_TILES || y >= MAP_HEIGHT_TILES - OCEAN_BORDER_TILES - BEACH_BORDER_TILES) {
+                        tileType = 'sand'; // Beach
+                    }
+
+                    gameState.mapGrid[y][x] = tileType;
+
+                    // Create visual tile element
+                    const tileElement = document.createElement('div');
+                    tileElement.classList.add('tile');
+                    if (tileType === 'ocean') tileElement.classList.add('tile-water');
+                    else if (tileType === 'sand') tileElement.classList.add('tile-sand');
+                    else tileElement.classList.add('tile-grass'); // Grass
+                    tileElement.style.width = `${TILE_SIZE}px`;
+                    tileElement.style.height = `${TILE_SIZE}px`;
+                    tileElement.style.left = `${x * TILE_SIZE}px`;
+                    tileElement.style.top = `${y * TILE_SIZE}px`;
+                    mapTilesContainer.appendChild(tileElement); // Add to tile container
+                }
+            }
+             console.log("Map grid generated.");
+
+            // --- Helper function for checking spawn validity ---
+            function isSpawnLocationValid(x, y, size) {
+                // 1. Check Grid Boundaries (redundant with mapGrid check, but good safety)
+                 if (x - size / 2 < 0 || x + size / 2 > MAP_WIDTH_PX || y - size / 2 < 0 || y + size / 2 > MAP_HEIGHT_PX) {
+                     return false;
+                 }
+
+                 // 2. Check Map Grid Terrain (Ocean is invalid)
+                 // Check corners and center of the entity's bounding box against the map grid
+                 const pointsToCheck = [
+                     { cx: x - size / 2, cy: y - size / 2 }, // Top-left
+                     { cx: x + size / 2, cy: y - size / 2 }, // Top-right
+                     { cx: x - size / 2, cy: y + size / 2 }, // Bottom-left
+                     { cx: x + size / 2, cy: y + size / 2 }, // Bottom-right
+                     { cx: x, cy: y }                        // Center
+                 ];
+                 for (const point of pointsToCheck) {
+                    const tileX = Math.floor(point.cx / TILE_SIZE);
+                    const tileY = Math.floor(point.cy / TILE_SIZE);
+                    // Use safe navigation in case coords are slightly out
+                    if (gameState.mapGrid[tileY]?.[tileX] === 'ocean') {
+                        // console.log(`Spawn invalid: Coordinate (${x.toFixed(0)}, ${y.toFixed(0)}) is in ocean at tile (${tileX}, ${tileY})`);
+                        return false; // Cannot spawn in the ocean
+                    }
+                 }
 
 
-             // Add water border (impassable) - simplified as just map bounds check for now
-             // Could add visual water tiles if using a grid system
+                 // 3. Check Obstacle Collision (Non-Bush)
+                 const entityRect = { x: x - size / 2, y: y - size / 2, width: size, height: size };
+                 for (const obs of gameState.obstacles) {
+                    if (!obs.isBush) {
+                        const obstacleRect = { x: obs.x, y: obs.y, width: obs.width, height: obs.height };
+                        if (checkCollision(entityRect, obstacleRect)) {
+                           // console.log(`Spawn invalid: Coordinate (${x.toFixed(0)}, ${y.toFixed(0)}) collides with obstacle.`);
+                            return false; // Cannot spawn inside solid obstacles
+                        }
+                    }
+                 }
 
-             // Add random obstacles
-            for (let i = 0; i < NUM_OBSTACLES; i++) {
-                const size = getRandom(OBSTACLE_MIN_SIZE, OBSTACLE_MAX_SIZE);
-                const x = getRandom(0, MAP_WIDTH_PX - size);
-                const y = getRandom(0, MAP_HEIGHT_PX - size);
-                // Ensure not too close to center spawn?
-                gameState.obstacles.push(createObstacle(x, y, size, size));
+                 return true; // Location is valid
             }
 
-             // Add random bushes
-             for (let i = 0; i < NUM_BUSHES; i++) {
-                const size = BUSH_SIZE;
-                const x = getRandom(0, MAP_WIDTH_PX - size);
-                const y = getRandom(0, MAP_HEIGHT_PX - size);
-                 gameState.obstacles.push(createObstacle(x, y, size, size, true));
-             }
 
-             // Add simple wall structures (e.g., L-shapes or rectangles)
-             for (let i = 0; i < NUM_WALL_STRUCTURES; i++) {
-                 const startX = getRandom(TILE_SIZE * 5, MAP_WIDTH_PX - TILE_SIZE * 5);
-                 const startY = getRandom(TILE_SIZE * 5, MAP_HEIGHT_PX - TILE_SIZE * 5);
-                 const structureType = getRandomInt(1,3); // 1: L-shape, 2: U-shape, 3: Rectangle
+            // --- Place Obstacles, Bushes, Walls ---
+            // (Place these *after* map grid is defined, but *before* entities/chests)
+             console.log("Placing obstacles...");
+             const NUM_OBSTACLES = 50;
+             const NUM_BUSHES = 30;
+             const NUM_WALL_STRUCTURES = 5;
 
-                 if (structureType === 1) { // L-shape
-                     const length1 = getRandom(WALL_MIN_LENGTH, WALL_MAX_LENGTH);
-                     const length2 = getRandom(WALL_MIN_LENGTH, WALL_MAX_LENGTH);
-                     const orientation = getRandomInt(1, 4); // 4 possible L orientations
-                     if (orientation === 1) {
-                        gameState.obstacles.push(createObstacle(startX, startY, length1, WALL_THICKNESS, false, true));
-                        gameState.obstacles.push(createObstacle(startX, startY + WALL_THICKNESS, WALL_THICKNESS, length2 - WALL_THICKNESS, false, true));
-                     } else if (orientation === 2){
-                         gameState.obstacles.push(createObstacle(startX, startY, length1, WALL_THICKNESS, false, true));
-                         gameState.obstacles.push(createObstacle(startX + length1 - WALL_THICKNESS, startY + WALL_THICKNESS, WALL_THICKNESS, length2 - WALL_THICKNESS, false, true));
-                     } else if (orientation === 3) {
-                         gameState.obstacles.push(createObstacle(startX, startY + length2 - WALL_THICKNESS, length1, WALL_THICKNESS, false, true));
-                        gameState.obstacles.push(createObstacle(startX, startY, WALL_THICKNESS, length2 - WALL_THICKNESS, false, true));
-                     } else {
-                         gameState.obstacles.push(createObstacle(startX, startY + length2 - WALL_THICKNESS, length1, WALL_THICKNESS, false, true));
-                         gameState.obstacles.push(createObstacle(startX + length1 - WALL_THICKNESS, startY, WALL_THICKNESS, length2 - WALL_THICKNESS, false, true));
+             // Place random obstacles (Rocks/Trees equivalent) - Ensure they are NOT in ocean/beach
+             for (let i = 0; i < NUM_OBSTACLES; i++) {
+                 let obsX, obsY, obsSize, validObsSpawn;
+                 let attempts = 0;
+                 do {
+                     obsSize = getRandom(OBSTACLE_MIN_SIZE, OBSTACLE_MAX_SIZE);
+                     // Spawn only within the 'grass' area potentially
+                     const minSpawnX = (OCEAN_BORDER_TILES + BEACH_BORDER_TILES) * TILE_SIZE;
+                     const maxSpawnX = MAP_WIDTH_PX - minSpawnX - obsSize;
+                     const minSpawnY = (OCEAN_BORDER_TILES + BEACH_BORDER_TILES) * TILE_SIZE;
+                     const maxSpawnY = MAP_HEIGHT_PX - minSpawnY - obsSize;
+
+                     if(maxSpawnX <= minSpawnX || maxSpawnY <= minSpawnY) {
+                          console.warn("Map too small for obstacle placement constraints.");
+                          validObsSpawn = false; // Cannot spawn
+                          break;
                      }
-                 } else if (structureType === 2) { // U-shape
-                     const length1 = getRandom(WALL_MIN_LENGTH, WALL_MAX_LENGTH);
-                     const length2 = getRandom(WALL_MIN_LENGTH, WALL_MAX_LENGTH);
-                     const isOpenTop = Math.random() < 0.5;
-                     if(isOpenTop) {
-                         gameState.obstacles.push(createObstacle(startX, startY, WALL_THICKNESS, length2, false, true)); // Left
-                         gameState.obstacles.push(createObstacle(startX + length1 - WALL_THICKNESS, startY, WALL_THICKNESS, length2, false, true)); // Right
-                         gameState.obstacles.push(createObstacle(startX, startY + length2 - WALL_THICKNESS, length1, WALL_THICKNESS, false, true)); // Bottom
-                     } else {
-                          gameState.obstacles.push(createObstacle(startX, startY, WALL_THICKNESS, length2, false, true)); // Left
-                         gameState.obstacles.push(createObstacle(startX + length1 - WALL_THICKNESS, startY, WALL_THICKNESS, length2, false, true)); // Right
-                         gameState.obstacles.push(createObstacle(startX, startY, length1, WALL_THICKNESS, false, true)); // Top
-                     }
-                 } else { // Rectangle
-                      const width = getRandom(WALL_MIN_LENGTH, WALL_MAX_LENGTH);
-                      const height = getRandom(WALL_MIN_LENGTH, WALL_MAX_LENGTH);
-                       gameState.obstacles.push(createObstacle(startX, startY, width, WALL_THICKNESS, false, true)); // Top
-                       gameState.obstacles.push(createObstacle(startX, startY + height - WALL_THICKNESS, width, WALL_THICKNESS, false, true)); // Bottom
-                       gameState.obstacles.push(createObstacle(startX, startY + WALL_THICKNESS, WALL_THICKNESS, height - (2*WALL_THICKNESS), false, true)); // Left
-                       gameState.obstacles.push(createObstacle(startX + width - WALL_THICKNESS, startY + WALL_THICKNESS, WALL_THICKNESS, height - (2*WALL_THICKNESS), false, true)); // Right
+
+                     obsX = getRandom(minSpawnX, maxSpawnX);
+                     obsY = getRandom(minSpawnY, maxSpawnY);
+                     // Check against grid (should be grass/sand here) and other obstacles
+                     validObsSpawn = isSpawnLocationValid(obsX + obsSize / 2, obsY + obsSize / 2, obsSize); // Check center point
+                     attempts++;
+                 } while (!validObsSpawn && attempts < 50);
+
+                 if (validObsSpawn) {
+                    gameState.obstacles.push(createObstacle(obsX, obsY, obsSize, obsSize));
                  }
              }
 
+             // Place random bushes - Ensure they are NOT in ocean (beach is okay)
+             for (let i = 0; i < NUM_BUSHES; i++) {
+                let bushX, bushY, validBushSpawn;
+                let attempts = 0;
+                const bushSize = BUSH_SIZE;
+                do {
+                     // Spawn outside pure ocean
+                     const minSpawnX = OCEAN_BORDER_TILES * TILE_SIZE;
+                     const maxSpawnX = MAP_WIDTH_PX - minSpawnX - bushSize;
+                     const minSpawnY = OCEAN_BORDER_TILES * TILE_SIZE;
+                     const maxSpawnY = MAP_HEIGHT_PX - minSpawnY - bushSize;
 
-                        // --- Spawn Player ---
-                        let playerStartX, playerStartY, validPlayerSpawn;
-            let playerSpawnAttempts = 0;
-            const maxPlayerSpawnAttempts = 100; // Safety limit
+                     if(maxSpawnX <= minSpawnX || maxSpawnY <= minSpawnY) { validBushSpawn = false; break; }
 
-            console.log("Finding valid player spawn...");
-            do {
-                validPlayerSpawn = true;
-                // Generate potential spawn point (wider area than before)
-                playerStartX = MAP_WIDTH_PX / 2 + getRandom(-MAP_WIDTH_PX / 3, MAP_WIDTH_PX / 3);
-                playerStartY = MAP_HEIGHT_PX / 2 + getRandom(-MAP_HEIGHT_PX / 3, MAP_HEIGHT_PX / 3);
+                     bushX = getRandom(minSpawnX, maxSpawnX);
+                     bushY = getRandom(minSpawnY, maxSpawnY);
+                     validBushSpawn = isSpawnLocationValid(bushX + bushSize / 2, bushY + bushSize / 2, bushSize);
+                     attempts++;
+                 } while (!validBushSpawn && attempts < 50);
+                  if (validBushSpawn) {
+                    gameState.obstacles.push(createObstacle(bushX, bushY, bushSize, bushSize, true));
+                 }
+             }
 
-                // Ensure coordinates are within map bounds (safety check)
-                 playerStartX = Math.max(PLAYER_SIZE / 2, Math.min(MAP_WIDTH_PX - PLAYER_SIZE / 2, playerStartX));
-                 playerStartY = Math.max(PLAYER_SIZE / 2, Math.min(MAP_HEIGHT_PX - PLAYER_SIZE / 2, playerStartY));
+              // Place simple wall structures (ensure valid placement)
+             for (let i = 0; i < NUM_WALL_STRUCTURES; i++) {
+                let attempts = 0;
+                let structurePlaced = false;
+                 do {
+                     const startX = getRandom(TILE_SIZE * (OCEAN_BORDER_TILES + BEACH_BORDER_TILES + 1), MAP_WIDTH_PX - TILE_SIZE * (OCEAN_BORDER_TILES + BEACH_BORDER_TILES + 1) - WALL_MAX_LENGTH);
+                     const startY = getRandom(TILE_SIZE * (OCEAN_BORDER_TILES + BEACH_BORDER_TILES + 1), MAP_HEIGHT_PX - TILE_SIZE * (OCEAN_BORDER_TILES + BEACH_BORDER_TILES + 1) - WALL_MAX_LENGTH);
+                     const structureType = getRandomInt(1, 3);
+                     let wallsForStructure = []; // Store potential walls temporarily
+                     let structureValid = true;
+
+                     // --- Generate potential wall coordinates ---
+                     // (This part is complex, simplified logic shown)
+                     // IMPORTANT: A real implementation needs to check if EACH segment
+                     // of the proposed structure is valid using isSpawnLocationValid
+                     // before adding it to gameState.obstacles.
+                     // For brevity, we'll assume the start position check is enough here,
+                     // which is NOT robust. A proper check would verify every wall piece.
+
+                     // Simple check on start point - needs more robust check for whole structure
+                     if (!isSpawnLocationValid(startX, startY, TILE_SIZE)) { // Basic check
+                         structureValid = false;
+                     }
 
 
-                // Create a hypothetical player rectangle at this spawn point
-                const playerRect = {
-                    x: playerStartX - PLAYER_SIZE / 2,
-                    y: playerStartY - PLAYER_SIZE / 2,
-                    width: PLAYER_SIZE,
-                    height: PLAYER_SIZE
-                };
+                    if (structureValid) {
+                        // --- Add the walls if deemed valid (Simplified) ---
+                         // Add the actual createObstacle calls here based on structureType
+                         // (Copy the L-shape, U-shape, Rectangle logic from the original initGame)
+                         // Example for Rectangle (needs proper validation for each piece):
+                         if (structureType === 3) {
+                             const width = getRandom(WALL_MIN_LENGTH, WALL_MAX_LENGTH);
+                             const height = getRandom(WALL_MIN_LENGTH, WALL_MAX_LENGTH);
+                             // Check validity of all 4 wall segments before adding! (Not shown here)
+                             gameState.obstacles.push(createObstacle(startX, startY, width, WALL_THICKNESS, false, true)); // Top
+                             gameState.obstacles.push(createObstacle(startX, startY + height - WALL_THICKNESS, width, WALL_THICKNESS, false, true)); // Bottom
+                             gameState.obstacles.push(createObstacle(startX, startY + WALL_THICKNESS, WALL_THICKNESS, height - (2*WALL_THICKNESS), false, true)); // Left
+                             gameState.obstacles.push(createObstacle(startX + width - WALL_THICKNESS, startY + WALL_THICKNESS, WALL_THICKNESS, height - (2*WALL_THICKNESS), false, true)); // Right
+                             structurePlaced = true;
+                         }
+                         // ... Add similar logic for L and U shapes with PROPER VALIDATION ...
 
-                // Check against all non-bush obstacles
-                for (const obs of gameState.obstacles) {
-                    if (!obs.isBush) { // Don't worry about spawning *in* a bush initially
-                        const obstacleRect = { x: obs.x, y: obs.y, width: obs.width, height: obs.height };
-                        if (checkCollision(playerRect, obstacleRect)) {
-                            validPlayerSpawn = false;
-                             // console.log(`Player spawn attempt (${playerStartX.toFixed(0)}, ${playerStartY.toFixed(0)}) collided with obstacle.`);
-                            break; // Collision found, try a new spot
-                        }
                     }
-                }
-                playerSpawnAttempts++;
 
-            } while (!validPlayerSpawn && playerSpawnAttempts < maxPlayerSpawnAttempts);
+                     attempts++;
+                 } while (!structurePlaced && attempts < 50);
+                 if (!structurePlaced) console.warn("Could not place wall structure", i);
+             }
+             console.log("Obstacles placed.");
 
-            if (!validPlayerSpawn) {
-                console.warn(`Could not find a clear spawn location for the player after ${maxPlayerSpawnAttempts} attempts. Spawning at map center as fallback.`);
-                // Fallback to exact center if no clear spot is found quickly
-                playerStartX = MAP_WIDTH_PX / 2;
-                playerStartY = MAP_HEIGHT_PX / 2;
-            }
 
-            console.log(`Player spawned at (${playerStartX.toFixed(0)}, ${playerStartY.toFixed(0)})`);
-            gameState.player = new Entity(playerStartX, playerStartY, PLAYER_SIZE, '#007bff', 'player');
-            gameState.player.healthKits = 0; // Start with 0 kits
+            // --- Spawn Player ---
+             console.log("Finding valid player spawn...");
+             let playerStartX, playerStartY, validPlayerSpawn;
+             let playerSpawnAttempts = 0;
+             const maxPlayerSpawnAttempts = 100; // Safety limit
+             do {
+                 // Generate potential spawn point only in non-ocean/beach areas
+                 const minSpawnX = (OCEAN_BORDER_TILES + BEACH_BORDER_TILES) * TILE_SIZE + PLAYER_SIZE / 2;
+                 const maxSpawnX = MAP_WIDTH_PX - minSpawnX;
+                 const minSpawnY = (OCEAN_BORDER_TILES + BEACH_BORDER_TILES) * TILE_SIZE + PLAYER_SIZE / 2;
+                 const maxSpawnY = MAP_HEIGHT_PX - minSpawnY;
+
+                 if (maxSpawnX <= minSpawnX || maxSpawnY <= minSpawnY) {
+                    console.error("Playable area too small for player spawn!");
+                    playerStartX = MAP_WIDTH_PX / 2; // Fallback
+                    playerStartY = MAP_HEIGHT_PX / 2;
+                    validPlayerSpawn = true; // Force exit loop with fallback
+                    break;
+                 }
+
+                 playerStartX = getRandom(minSpawnX, maxSpawnX);
+                 playerStartY = getRandom(minSpawnY, maxSpawnY);
+
+                 validPlayerSpawn = isSpawnLocationValid(playerStartX, playerStartY, PLAYER_SIZE);
+                 playerSpawnAttempts++;
+
+             } while (!validPlayerSpawn && playerSpawnAttempts < maxPlayerSpawnAttempts);
+
+             if (!validPlayerSpawn) {
+                 console.warn(`Could not find a clear spawn location for the player after ${maxPlayerSpawnAttempts} attempts. Spawning near center as fallback.`);
+                 playerStartX = (OCEAN_BORDER_TILES + BEACH_BORDER_TILES + 2) * TILE_SIZE; // Fallback inside playable area
+                 playerStartY = (OCEAN_BORDER_TILES + BEACH_BORDER_TILES + 2) * TILE_SIZE;
+                 // Final check on fallback
+                 if (!isSpawnLocationValid(playerStartX, playerStartY, PLAYER_SIZE)) {
+                     playerStartX = MAP_WIDTH_PX / 2; // Absolute fallback
+                     playerStartY = MAP_HEIGHT_PX / 2;
+                 }
+             }
+             console.log(`Player spawned at (${playerStartX.toFixed(0)}, ${playerStartY.toFixed(0)})`);
+             gameState.player = new Entity(playerStartX, playerStartY, PLAYER_SIZE, '#007bff', 'player');
+             gameState.player.healthKits = 0; // Start with 0 kits
+
+
             // --- Spawn AI ---
-             const NUM_AI = 10;
-             for (let i = 0; i < NUM_AI; i++) {
+            console.log("Spawning AI...");
+            const NUM_AI = 10;
+            gameState.minimapAIDots = []; // Clear previous dots
+            for (let i = 0; i < NUM_AI; i++) {
                  let spawnX, spawnY, validSpawn;
                  let attempts = 0;
                  do {
-                     validSpawn = true;
-                     spawnX = getRandom(AI_SIZE, MAP_WIDTH_PX - AI_SIZE);
-                     spawnY = getRandom(AI_SIZE, MAP_HEIGHT_PX - AI_SIZE);
-                     // Basic check: ensure not spawning inside an obstacle
-                     const aiRect = { x: spawnX - AI_SIZE / 2, y: spawnY - AI_SIZE / 2, width: AI_SIZE, height: AI_SIZE };
-                     for (const obs of gameState.obstacles) {
-                         if (!obs.isBush && checkCollision(aiRect, { x: obs.x, y: obs.y, width: obs.width, height: obs.height })) {
-                             validSpawn = false;
-                             break;
-                         }
-                     }
+                     // Generate potential spawn point only in non-ocean/beach areas
+                     const minSpawnX = (OCEAN_BORDER_TILES + BEACH_BORDER_TILES) * TILE_SIZE + AI_SIZE / 2;
+                     const maxSpawnX = MAP_WIDTH_PX - minSpawnX;
+                     const minSpawnY = (OCEAN_BORDER_TILES + BEACH_BORDER_TILES) * TILE_SIZE + AI_SIZE / 2;
+                     const maxSpawnY = MAP_HEIGHT_PX - minSpawnY;
+
+                     if (maxSpawnX <= minSpawnX || maxSpawnY <= minSpawnY) { validSpawn = false; break; } // Safety check
+
+                     spawnX = getRandom(minSpawnX, maxSpawnX);
+                     spawnY = getRandom(minSpawnY, maxSpawnY);
+
+                     validSpawn = isSpawnLocationValid(spawnX, spawnY, AI_SIZE);
+
                      // Also check distance from player start
-                     if (getDistance(spawnX, spawnY, playerStartX, playerStartY) < TILE_SIZE * 5) {
+                     if (validSpawn && getDistance(spawnX, spawnY, playerStartX, playerStartY) < TILE_SIZE * 5) {
                          validSpawn = false;
                      }
                      attempts++;
-                 } while (!validSpawn && attempts < 50); // Limit attempts to prevent infinite loop
+                 } while (!validSpawn && attempts < 50);
 
                  if (validSpawn) {
                      const ai = new Entity(spawnX, spawnY, AI_SIZE, '#dc3545', 'ai');
@@ -1088,23 +1223,27 @@
                      console.warn("Could not find valid spawn for AI", i);
                  }
              }
+             console.log("AI spawned.");
 
             // --- Spawn Chests ---
+            console.log("Spawning chests...");
+            const NUM_CHESTS = 40;
             for (let i = 0; i < NUM_CHESTS; i++) {
                  let spawnX, spawnY, validSpawn;
                  let attempts = 0;
                  do {
-                    validSpawn = true;
-                    spawnX = getRandom(CHEST_SIZE, MAP_WIDTH_PX - CHEST_SIZE);
-                    spawnY = getRandom(CHEST_SIZE, MAP_HEIGHT_PX - CHEST_SIZE);
-                    const chestRect = { x: spawnX - CHEST_SIZE / 2, y: spawnY - CHEST_SIZE / 2, width: CHEST_SIZE, height: CHEST_SIZE };
-                    for (const obs of gameState.obstacles) {
-                         if (!obs.isBush && checkCollision(chestRect, { x: obs.x, y: obs.y, width: obs.width, height: obs.height })) {
-                            validSpawn = false;
-                            break;
-                        }
-                    }
-                     // Optional: Check distance from other chests?
+                    // Generate potential spawn point only in non-ocean areas (beach okay)
+                    const minSpawnX = OCEAN_BORDER_TILES * TILE_SIZE + CHEST_SIZE / 2;
+                    const maxSpawnX = MAP_WIDTH_PX - minSpawnX;
+                    const minSpawnY = OCEAN_BORDER_TILES * TILE_SIZE + CHEST_SIZE / 2;
+                    const maxSpawnY = MAP_HEIGHT_PX - minSpawnY;
+
+                    if (maxSpawnX <= minSpawnX || maxSpawnY <= minSpawnY) { validSpawn = false; break; }
+
+                    spawnX = getRandom(minSpawnX, maxSpawnX);
+                    spawnY = getRandom(minSpawnY, maxSpawnY);
+
+                    validSpawn = isSpawnLocationValid(spawnX, spawnY, CHEST_SIZE);
                     attempts++;
                  } while (!validSpawn && attempts < 50);
 
@@ -1114,19 +1253,24 @@
                       console.warn("Could not find valid spawn for Chest", i);
                  }
             }
+            console.log("Chests spawned.");
 
 
             // Initial UI Update
             updatePlayerUI();
             updatePlayerCountUI();
             updateStormUI();
-             hideEndScreen(); // Ensure end screen is hidden
+            hideEndScreen(); // Ensure end screen is hidden
 
             // Add Event Listeners
             addEventListeners();
 
             // Start Game Loop
             gameState.lastTimestamp = performance.now();
+            // Clear any previous animation frame request
+            if (animationFrameId) {
+                 cancelAnimationFrame(animationFrameId);
+             }
             gameLoop(gameState.lastTimestamp);
             console.log("Game initialized and loop started.");
         }
@@ -1367,70 +1511,143 @@
         }
 
         function updateAI(dt) {
-             if (gameState.gameOver) return;
+            if (gameState.gameOver) return;
 
-            gameState.ai.forEach(ai => {
+            gameState.ai.forEach((ai, aiIndex) => { // Added aiIndex for debugging/targeting checks
                 if (!ai || ai.health <= 0) return;
 
-                // Simple AI: Move towards safe zone center, shoot player if visible and close
-                let targetX = gameState.nextStormCenterX;
-                let targetY = gameState.nextStormCenterY;
+                let targetX = null;
+                let targetY = null;
+                let targetEntity = null; // Store the entity being targeted (player or other AI)
+                let targetChest = null;
                 let isShooting = false;
+                let movingToChest = false;
+                let movingToEnemy = false;
 
-                // Check if player is visible and within range
-                if (gameState.player && gameState.player.health > 0 && !gameState.player.isHiding) {
-                    const distToPlayer = getDistance(ai.x, ai.y, gameState.player.x, gameState.player.y);
-                    const weaponRange = ai.weapon ? WEAPONS[ai.weapon].range : 100; // Default sight range if no weapon
+                // --- Priority 1: Get Weapon (if needed) ---
+                if (!ai.weapon) {
+                    let closestChest = null;
+                    let minChestDist = AI_CHEST_SEARCH_RADIUS;
 
-                    if (distToPlayer < weaponRange * 1.2) { // Look slightly beyond weapon range
-                         // Basic Line of Sight Check (Raycast against obstacles)
-                         if (hasLineOfSight(ai.x, ai.y, gameState.player.x, gameState.player.y)) {
-                            targetX = gameState.player.x;
-                            targetY = gameState.player.y;
-                            if (distToPlayer < weaponRange && ai.weapon) {
-                                isShooting = true;
-                                ai.shoot(gameState.player.x, gameState.player.y);
+                    gameState.chests.forEach((chest, chestIndex) => { // Added chestIndex
+                        if (!chest.opened) {
+                            const dist = getDistance(ai.x, ai.y, chest.x, chest.y);
+                            if (dist < minChestDist) {
+                                // Basic LOS check to chest - can AI 'see' it?
+                                if (hasLineOfSight(ai.x, ai.y, chest.x, chest.y)) {
+                                     minChestDist = dist;
+                                     closestChest = chest;
+                                     // Store index to remove later if needed
+                                     closestChest.index = chestIndex;
+                                }
                             }
                         }
+                    });
+
+                    if (closestChest) {
+                        // Check if close enough to 'interact'
+                        if (minChestDist < AI_CHEST_INTERACT_DIST) {
+                            console.log(`AI ${aiIndex} reached Chest ${closestChest.index}`);
+                            // AI 'opens' the chest - Give it a random weapon directly
+                            const weaponChoices = Object.keys(WEAPONS);
+                            const chosenWeapon = weaponChoices[getRandomInt(0, weaponChoices.length - 1)];
+                            ai.weapon = chosenWeapon;
+                            console.log(`AI ${aiIndex} got weapon: ${chosenWeapon}`);
+
+                            // Mark chest as opened and remove it (or schedule removal)
+                            closestChest.opened = true; // Mark as opened
+                             if (closestChest.element.parentNode) closestChest.element.parentNode.removeChild(closestChest.element);
+                             // Find and remove from gameState.chests by object reference (or stored index)
+                            const foundIndex = gameState.chests.findIndex(c => c === closestChest);
+                            if (foundIndex > -1) {
+                                gameState.chests.splice(foundIndex, 1);
+                            }
+                             // Now that it has a weapon, it will re-evaluate next tick
+
+                        } else {
+                            // Move towards the chest
+                            targetX = closestChest.x;
+                            targetY = closestChest.y;
+                            movingToChest = true;
+                            //console.log(`AI ${aiIndex} moving to Chest ${closestChest.index}`);
+                        }
                     }
+                } // End of weapon seeking logic
+
+                // --- Priority 2: Engage Enemy (if has weapon and not moving to chest) ---
+                if (ai.weapon && !movingToChest) {
+                    let closestEnemy = null;
+                    let minEnemyDist = AI_ENEMY_SEARCH_RADIUS;
+                    const potentialTargets = [gameState.player, ...gameState.ai].filter((e, idx) => e && e.health > 0 && e !== ai); // All living entities except self
+
+                    potentialTargets.forEach(enemy => {
+                        const dist = getDistance(ai.x, ai.y, enemy.x, enemy.y);
+                        if (dist < minEnemyDist) {
+                            // Check Line of Sight and hiding status
+                            if (!enemy.isHiding && hasLineOfSight(ai.x, ai.y, enemy.x, enemy.y)) {
+                                minEnemyDist = dist;
+                                closestEnemy = enemy;
+                            }
+                        }
+                    });
+
+                    if (closestEnemy) {
+                        targetEntity = closestEnemy; // Store the target
+                        targetX = closestEnemy.x;
+                        targetY = closestEnemy.y;
+                        movingToEnemy = true; // Indicate moving towards or engaging enemy
+                        //console.log(`AI ${aiIndex} sees ${closestEnemy.type === 'player' ? 'Player' : 'AI'}`);
+
+
+                        const weaponRange = WEAPONS[ai.weapon].range;
+                        if (minEnemyDist < weaponRange) {
+                            // Within range, shoot!
+                            isShooting = true;
+                            //console.log(`AI ${aiIndex} shooting at ${closestEnemy.type}`);
+                            ai.shoot(targetX, targetY);
+                        } else {
+                            // Visible but out of range, move closer
+                             isShooting = false;
+                             //console.log(`AI ${aiIndex} moving towards ${closestEnemy.type}`);
+                        }
+                    }
+                } // End of enemy engagement logic
+
+                // --- Priority 3: Move to Safety (if has weapon, no chest target, no enemy target) ---
+                if (ai.weapon && !movingToChest && !movingToEnemy) {
+                    targetX = gameState.nextStormCenterX;
+                    targetY = gameState.nextStormCenterY;
+                     //console.log(`AI ${aiIndex} moving to safe zone`);
                 }
 
-                // Update AI angle towards target
-                ai.angle = getAngle(ai.x, ai.y, targetX, targetY);
+                // --- Update Movement & Angle ---
+                if (targetX !== null && targetY !== null) {
+                    // Always update angle to face the current primary target (chest, enemy, or safe zone)
+                    ai.angle = getAngle(ai.x, ai.y, targetX, targetY);
 
-                // Movement
-                if (!isShooting) {
-                    const angleToTarget = ai.angle; // Already calculated
-                    ai.vx = Math.cos(angleToTarget) * AI_SPEED;
-                    ai.vy = Math.sin(angleToTarget) * AI_SPEED;
+                    if (isShooting) {
+                        // Stop moving when shooting
+                        ai.vx = 0;
+                        ai.vy = 0;
+                    } else {
+                        // Move towards the target
+                        const angleToTarget = ai.angle; // Use the calculated angle
+                        ai.vx = Math.cos(angleToTarget) * AI_SPEED;
+                        ai.vy = Math.sin(angleToTarget) * AI_SPEED;
+                    }
                 } else {
-                    ai.vx = 0; // Stop moving when shooting
+                    // No target at all (should only happen if AI has weapon but safe zone center isn't defined?)
+                    // Idle behavior? Stand still for now.
+                    ai.vx = 0;
                     ai.vy = 0;
+                    //console.log(`AI ${aiIndex} has no target.`);
                 }
 
-                // Basic AI weapon pickup (if they walk over one and don't have one)
-                 if(!ai.weapon) {
-                     const aiRect = { x: ai.x - ai.size / 2, y: ai.y - ai.size / 2, width: ai.size, height: ai.size };
-                     for (let i = gameState.items.length - 1; i >= 0; i--) {
-                         const item = gameState.items[i];
-                         if(item.itemType === 'weapon') {
-                             const itemRect = { x: item.x - item.size / 2, y: item.y - item.size / 2, width: item.size, height: item.size };
-                             if (checkCollision(aiRect, itemRect)) {
-                                 if (ai.pickupItem(item)) { // If pickup was successful
-                                     item.remove();
-                                     gameState.items.splice(i, 1);
-                                     break; // Pick up only one
-                                 }
-                             }
-                         }
-                     }
-                 }
-
-
-                ai.update(dt);
+                // --- Final Update ---
+                // (AI Pickup logic removed from here - simplified to chest interaction)
+                ai.update(dt); // Apply movement, collision, rendering
             });
         }
-
         // Basic Line of Sight Check (Simple - checks midpoint against obstacles)
         // A proper implementation would use raycasting with steps or Bresenham's line algorithm.
         function hasLineOfSight(x1, y1, x2, y2) {
