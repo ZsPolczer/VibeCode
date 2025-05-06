@@ -586,6 +586,13 @@
                 this.aiInaccuracy = type === 'ai' ? getRandom(0.03, 0.1) : 0; // Radians of inaccuracy
                 this.aiLastPosition = { x: this.x, y: this.y }; // For stuck detection (use assigned this.x/y)
                 this.aiTimeStuck = 0; // For stuck detection
+
+                 // --- NEW Wander Properties ---
+                this.aiWanderTargetX = null;
+                this.aiWanderTargetY = null;
+                this.aiWanderTimer = 0; // Time left for current wander move
+                this.aiState = 'idle'; // Track current AI state ('idle', 'looting', 'engaging', 'fleeing', 'wandering')
+                // --- END Wander Properties ---
             }
 
             update(dt) {
@@ -1464,124 +1471,261 @@
             if (gameState.gameOver) return;
 
             gameState.ai.forEach((ai, aiIndex) => {
-                if (!ai || ai.health <= 0 || !ai.element) return; // Extra checks: ensure AI exists, is alive, and has element
+                // --- Basic Checks ---
+                if (!ai || ai.health <= 0 || !ai.element) {
+                    // Clean up minimap dot if AI somehow exists but element doesn't
+                    const dot = gameState.minimapAIDots[aiIndex];
+                    if (dot && dot.parentNode) dot.parentNode.removeChild(dot);
+                    return; // Skip dead or invalid AI
+                }
 
-                let targetX = null; let targetY = null; let isShooting = false;
-                let movingToChest = false; let movingToEnemy = false;
+                // --- Reset Per-Frame State ---
+                let targetX = null;         // Intended X destination for movement/aiming
+                let targetY = null;         // Intended Y destination
+                let isShooting = false;     // Should the AI shoot this frame?
+                let decidedAction = false; // Flag to prevent lower priority actions once one is chosen
+                ai.aiState = 'idle';      // Reset state for this frame's decision
 
-                // Prio 1: Get Weapon
-                if (!ai.weapon) {
-                    let closestChest = null; let minChestDist = AI_CHEST_SEARCH_RADIUS;
-                    gameState.chests.forEach((chest, chestIndex) => {
-                        if (chest && !chest.opened) { // Check chest exists
+                // === AI Decision Making Priorities ===
+
+                // --- Priority 1: Engage Enemy (Only if AI has a weapon) ---
+                if (ai.weapon && !decidedAction) {
+                    let closestEnemy = null;
+                    let minEnemyDist = AI_ENEMY_SEARCH_RADIUS;
+                    const potentialTargets = [gameState.player, ...gameState.ai].filter(e => e && e.health > 0 && e !== ai && e.element); // Include player and other living AI
+
+                    potentialTargets.forEach(enemy => {
+                        const dist = getDistance(ai.x, ai.y, enemy.x, enemy.y);
+                        if (dist < minEnemyDist && !enemy.isHiding && hasLineOfSight(ai.x, ai.y, enemy.x, enemy.y)) {
+                            minEnemyDist = dist;
+                            closestEnemy = enemy;
+                        }
+                    });
+
+                    if (closestEnemy) {
+                        ai.aiState = 'engaging';
+                        decidedAction = true;
+                        targetX = closestEnemy.x; // Aim/move towards the enemy
+                        targetY = closestEnemy.y;
+
+                        const weaponRange = WEAPONS[ai.weapon]?.range ?? 0;
+
+                        // Targeting / Reaction Time Logic
+                        if (ai.aiTarget !== closestEnemy) { // New target found
+                            ai.aiTarget = closestEnemy;
+                            ai.aiIsAiming = false;
+                            ai.aiAimStartTime = 0;
+                            ai.aiWanderTimer = 0; // Stop wandering if enemy spotted
+                        }
+
+                        if (minEnemyDist < weaponRange) { // Target in range
+                            if (!ai.aiIsAiming) { // Start aiming delay
+                                ai.aiIsAiming = true;
+                                ai.aiAimStartTime = gameState.gameTime;
+                            }
+                            const timeSinceAimStart = (gameState.gameTime - ai.aiAimStartTime) / 1000;
+                            if (ai.aiIsAiming && timeSinceAimStart >= ai.aiReactionTime) {
+                                isShooting = true; // Aim delay complete, shoot!
+                                ai.shoot(targetX, targetY);
+                            } else {
+                                isShooting = false; // Still aiming
+                            }
+                        } else { // Target visible but out of range
+                            isShooting = false;
+                            ai.aiIsAiming = false; // Reset aiming if target moves out of range
+                            ai.aiAimStartTime = 0;
+                        }
+                    } else {
+                        // No enemy found, reset target state if previous target lost
+                        if(ai.aiTarget) {
+                             ai.aiTarget = null;
+                             ai.aiIsAiming = false;
+                             ai.aiAimStartTime = 0;
+                        }
+                    }
+                } // End Priority 1: Engage Enemy
+
+                // --- Priority 2: Seek Loot (Only if AI *doesn't* have a weapon and isn't engaging) ---
+                if (!ai.weapon && !decidedAction) {
+                    let closestChest = null;
+                    let minChestDist = AI_CHEST_SEARCH_RADIUS;
+
+                    gameState.chests.forEach((chest) => {
+                        if (chest && !chest.opened) {
                             const dist = getDistance(ai.x, ai.y, chest.x, chest.y);
                             if (dist < minChestDist && hasLineOfSight(ai.x, ai.y, chest.x, chest.y)) {
-                                minChestDist = dist; closestChest = chest; // closestChest.index = chestIndex; // Index not strictly needed if using findIndex later
+                                minChestDist = dist;
+                                closestChest = chest;
                             }
                         }
                     });
 
                     if (closestChest) {
-                        if (minChestDist < AI_CHEST_INTERACT_DIST) {
-                            // console.log(`AI ${aiIndex} opening Chest`);
-                            closestChest.open(); // AI opens the chest
-                             const foundIndex = gameState.chests.indexOf(closestChest); // Find and remove opened chest
-                             if (foundIndex > -1) gameState.chests.splice(foundIndex, 1);
+                        ai.aiState = 'looting';
+                        decidedAction = true;
+                        ai.aiWanderTimer = 0; // Stop wandering
 
-                             const weaponChoices = Object.keys(WEAPONS); // AI gets a weapon directly from chest opening
+                        if (minChestDist < AI_CHEST_INTERACT_DIST) {
+                            // Interact with chest (Open and potentially get weapon)
+                            closestChest.open(); // AI opens the chest
+                            const foundIndex = gameState.chests.indexOf(closestChest);
+                            if (foundIndex > -1) gameState.chests.splice(foundIndex, 1);
+                            // AI doesn't automatically get weapon here; chest.open spawns items.
+                            // AI will try to pick up items in its next update cycle if needed.
+                            // OR, simplify: just give AI a random weapon on chest open:
+                             const weaponChoices = Object.keys(WEAPONS);
                              if (weaponChoices.length > 0) {
                                 ai.weapon = weaponChoices[getRandomInt(0, weaponChoices.length - 1)];
-                                // console.log(`AI ${aiIndex} got weapon: ${ai.weapon}`);
+                                // console.log(`AI ${aiIndex} got weapon: ${ai.weapon} from chest`);
                              }
+                             targetX = null; // Stop moving briefly while opening
+                             targetY = null;
                         } else {
-                            targetX = closestChest.x; targetY = closestChest.y; movingToChest = true;
+                            // Move towards the chest
+                            targetX = closestChest.x;
+                            targetY = closestChest.y;
                         }
                     }
-                } // End Weapon Seeking
+                } // End Priority 2: Seek Loot
 
-                // Prio 2: Engage Enemy
-                let enemyTargetFoundThisFrame = false;
-                if (ai.weapon && !movingToChest) {
-                    let closestEnemy = null; let minEnemyDist = AI_ENEMY_SEARCH_RADIUS;
-                    const potentialTargets = [gameState.player, ...gameState.ai].filter(e => e && e.health > 0 && e !== ai && e.element); // Check element exists too
+                // --- Priority 3: Storm Safety (If not engaging or actively looting) ---
+                // *All* AI should care about the storm, armed or not
+                if (!decidedAction) {
+                    const currentDistFromCenter = getDistance(ai.x, ai.y, gameState.stormCenterX, gameState.stormCenterY);
+                    const nextDistFromCenter = getDistance(ai.x, ai.y, gameState.nextStormCenterX, gameState.nextStormCenterY);
+                    const isOutsideCurrent = currentDistFromCenter > gameState.stormRadius;
+                    const isOutsideNext = nextDistFromCenter > gameState.nextStormRadius;
 
-                    potentialTargets.forEach(enemy => {
-                        const dist = getDistance(ai.x, ai.y, enemy.x, enemy.y);
-                        if (dist < minEnemyDist && !enemy.isHiding && hasLineOfSight(ai.x, ai.y, enemy.x, enemy.y)) {
-                           minEnemyDist = dist; closestEnemy = enemy;
-                        }
-                    });
-
-                    if (closestEnemy) {
-                        enemyTargetFoundThisFrame = true; movingToEnemy = true;
-                        targetX = closestEnemy.x; targetY = closestEnemy.y;
-                        const weaponRange = WEAPONS[ai.weapon]?.range ?? 0; // Use optional chaining
-
-                        if (ai.aiTarget !== closestEnemy) { // New target
-                            ai.aiTarget = closestEnemy; ai.aiIsAiming = false; ai.aiAimStartTime = 0;
-                        }
-
-                        if (minEnemyDist < weaponRange) { // In range
-                             if (!ai.aiIsAiming) { ai.aiIsAiming = true; ai.aiAimStartTime = gameState.gameTime; }
-                             const timeSinceAimStart = (gameState.gameTime - ai.aiAimStartTime) / 1000;
-                             if (ai.aiIsAiming && timeSinceAimStart >= ai.aiReactionTime) {
-                                 isShooting = true; ai.shoot(targetX, targetY);
-                             } else isShooting = false; // Still aiming
-                        } else { // Out of range
-                             isShooting = false; ai.aiIsAiming = false; ai.aiAimStartTime = 0;
-                        }
-                    }
-                } // End Enemy Engagement
-
-                if (!enemyTargetFoundThisFrame) { // Lost target
-                    ai.aiTarget = null; ai.aiIsAiming = false; ai.aiAimStartTime = 0;
-                    isShooting = false; movingToEnemy = false;
-                }
-
-                // Prio 3: Move to Safety
-                if (ai.weapon && !movingToChest && !movingToEnemy) {
-                    // Only move to safe zone if outside the *next* safe zone or if storm is shrinking
-                    const distToNextCenter = getDistance(ai.x, ai.y, gameState.nextStormCenterX, gameState.nextStormCenterY);
-                    if (gameState.isStormShrinking || distToNextCenter > gameState.nextStormRadius) {
-                        targetX = gameState.nextStormCenterX;
+                    if (isOutsideCurrent && gameState.currentStormPhase >= 0) { // If outside current circle (and storm active)
+                        ai.aiState = 'fleeing';
+                        decidedAction = true;
+                        targetX = gameState.stormCenterX; // Head towards the current center
+                        targetY = gameState.stormCenterY;
+                        ai.aiWanderTimer = 0; // Stop wandering
+                    } else if (gameState.isStormShrinking && isOutsideNext) { // If inside current, but outside next, and it's shrinking
+                        ai.aiState = 'fleeing';
+                        decidedAction = true;
+                        targetX = gameState.nextStormCenterX; // Head towards the next center
                         targetY = gameState.nextStormCenterY;
-                        // console.log(`AI ${aiIndex} moving to safe zone`);
-                    } else {
-                        // Inside safe zone and not shrinking, maybe idle or patrol slightly?
-                        targetX = null; targetY = null; // Stand still for now if safe
+                        ai.aiWanderTimer = 0; // Stop wandering
+                    }
+                } // End Priority 3: Storm Safety
+
+                 // --- Priority 4: Wander (If safe, armed or no loot nearby, and no enemy) ---
+                 if (!decidedAction) {
+                     ai.aiState = 'wandering'; // Set state to wandering
+                     ai.aiWanderTimer -= dt;
+
+                     if (ai.aiWanderTimer <= 0 || ai.aiWanderTargetX === null) {
+                         // Time to pick a new wander target
+                         const wanderDist = getRandom(150, 400); // How far to wander
+                         const wanderAngle = getRandom(0, Math.PI * 2);
+                         let potentialX = ai.x + Math.cos(wanderAngle) * wanderDist;
+                         let potentialY = ai.y + Math.sin(wanderAngle) * wanderDist;
+
+                         // --- Validate Wander Target ---
+                         // 1. Clamp to map boundaries (generous padding)
+                         const padding = TILE_SIZE;
+                         potentialX = Math.max(padding, Math.min(MAP_WIDTH_PX - padding, potentialX));
+                         potentialY = Math.max(padding, Math.min(MAP_HEIGHT_PX - padding, potentialY));
+
+                         // 2. Check if target is in ocean (simple check)
+                         const targetTileX = Math.floor(potentialX / TILE_SIZE);
+                         const targetTileY = Math.floor(potentialY / TILE_SIZE);
+                         if (gameState.mapGrid[targetTileY]?.[targetTileX] !== 'ocean') {
+                             // 3. TODO: Optional - More robust check using isSpawnLocationValid (might be slow)
+                             // if (isSpawnLocationValid(potentialX, potentialY, ai.size / 2, false)) {
+                                ai.aiWanderTargetX = potentialX;
+                                ai.aiWanderTargetY = potentialY;
+                                ai.aiWanderTimer = getRandom(4, 8); // Wander for 4-8 seconds
+                                // console.log(`AI ${aiIndex} new wander target: ${Math.round(ai.aiWanderTargetX)}, ${Math.round(ai.aiWanderTargetY)}`)
+                             // } else { // Invalid wander target, try again next frame
+                             //    ai.aiWanderTimer = 0.1; // Short timer to retry quickly
+                             // }
+                         } else {
+                              // Target was in ocean, try again next frame
+                             ai.aiWanderTimer = 0.1; // Short timer to retry quickly
+                             ai.aiWanderTargetX = null; // Clear target
+                             ai.aiWanderTargetY = null;
+                         }
+                     }
+
+                     // If we have a valid wander target, move towards it
+                     if (ai.aiWanderTargetX !== null) {
+                         targetX = ai.aiWanderTargetX;
+                         targetY = ai.aiWanderTargetY;
+                         // If AI gets very close to wander target, pick a new one sooner
+                         if (getDistance(ai.x, ai.y, targetX, targetY) < ai.size * 1.5) {
+                             ai.aiWanderTimer = 0; // Force new target next frame
+                         }
+                     }
+                 } // End Priority 4: Wander
+
+                // === Action Execution ===
+
+                // --- Update Angle ---
+                if (targetX !== null && targetY !== null) {
+                    // Smooth angle change? Optional. For now, instant snap.
+                    ai.angle = getAngle(ai.x, ai.y, targetX, targetY);
+                } else if (ai.aiState === 'idle' || ai.aiState === 'wandering') {
+                    // Optional: Slight random angle drift when idle/wandering?
+                    // ai.angle += getRandom(-0.05, 0.05) * dt * 10;
+                }
+
+                // --- Set Velocity ---
+                ai.vx = 0; // Default to not moving
+                ai.vy = 0;
+                if (!isShooting && targetX !== null && targetY !== null) { // Only move if not shooting and has a target
+                    // Check if close enough to target (especially for non-enemy targets)
+                    const distToTarget = getDistance(ai.x, ai.y, targetX, targetY);
+                    // Don't move if looting and very close, or wandering and very close
+                     const stopDistance = (ai.aiState === 'looting' || ai.aiState === 'wandering') ? ai.size : -1; // Only stop for loot/wander
+
+                    if (distToTarget > stopDistance) {
+                        const angleToTarget = ai.angle; // Use calculated angle
+                        ai.vx = Math.cos(angleToTarget) * AI_SPEED;
+                        ai.vy = Math.sin(angleToTarget) * AI_SPEED;
                     }
                 }
 
-                // Update Movement & Angle
-                if (targetX !== null && targetY !== null) {
-                    ai.angle = getAngle(ai.x, ai.y, targetX, targetY);
-                    if (isShooting) { ai.vx = 0; ai.vy = 0; }
-                    else { const angleToTarget = ai.angle; ai.vx = Math.cos(angleToTarget) * AI_SPEED; ai.vy = Math.sin(angleToTarget) * AI_SPEED; }
-                } else { ai.vx = 0; ai.vy = 0; }
 
-                // Stuck Detection
+                // --- Stuck Detection ---
                 const intendedMovement = Math.abs(ai.vx) > 0.1 || Math.abs(ai.vy) > 0.1;
                 const actualDistMoved = getDistance(ai.x, ai.y, ai.aiLastPosition.x, ai.aiLastPosition.y);
 
-                if (intendedMovement && actualDistMoved < 0.5 * dt * 60) { // Scale check slightly by frame rate expectation
+                 // Scale threshold slightly based on delta time to be less sensitive to frame drops
+                 const stuckMoveThreshold = 0.5 * dt * 60; // Expect ~0.5px movement per 1/60th sec
+
+                if (intendedMovement && actualDistMoved < stuckMoveThreshold) {
                     ai.aiTimeStuck += dt;
-                } else { ai.aiTimeStuck = 0; }
-
-                ai.aiLastPosition.x = ai.x; ai.aiLastPosition.y = ai.y; // Update *before* update call
-
-                if (ai.aiTimeStuck > AI_STUCK_THRESHOLD) {
-                    console.warn(`AI ${aiIndex} stuck! Nudging.`);
-                    const nudgeAngle = getRandom(0, Math.PI * 2);
-                    ai.vx = Math.cos(nudgeAngle) * AI_SPEED * 0.5; // Temporary nudge velocity
-                    ai.vy = Math.sin(nudgeAngle) * AI_SPEED * 0.5;
-                    ai.aiTimeStuck = 0; ai.aiIsAiming = false; ai.aiAimStartTime = 0;
+                } else {
+                    ai.aiTimeStuck = 0; // Reset timer if moving or not intending to move
                 }
 
-                // Final Update
-                ai.update(dt);
-            });
-        } // End updateAI
+                // Update last position *before* the main update call
+                ai.aiLastPosition.x = ai.x;
+                ai.aiLastPosition.y = ai.y;
 
+                if (ai.aiTimeStuck > AI_STUCK_THRESHOLD) {
+                    console.warn(`AI ${aiIndex} stuck! Nudging. State: ${ai.aiState}`);
+                    const nudgeAngle = getRandom(0, Math.PI * 2);
+                    // Apply nudge velocity for one frame
+                    ai.vx = Math.cos(nudgeAngle) * AI_SPEED * 0.6;
+                    ai.vy = Math.sin(nudgeAngle) * AI_SPEED * 0.6;
+
+                    ai.aiTimeStuck = 0; // Reset timer after nudging
+                    ai.aiIsAiming = false; // Stop aiming if stuck
+                    ai.aiAimStartTime = 0;
+                    ai.aiWanderTimer = 0.1; // Force new wander target quickly if was wandering
+                }
+                // --- End Stuck Detection ---
+
+
+                // --- Final Entity Update (Movement, Collision, Rendering) ---
+                ai.update(dt);
+
+            }); // End forEach AI loop
+        } // End updateAI function
 
         // Basic Line of Sight Check
         function hasLineOfSight(x1, y1, x2, y2) {
