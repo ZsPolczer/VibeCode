@@ -77,7 +77,22 @@
             left: 50%;
             transform: translate(0, -50%); /* Center vertically, offset horizontally */
         }
-
+        /* Entity Name (Above Health Bar) */
+        .entity-name {
+            position: absolute;
+            bottom: 135%; /* Position above the health bar (health bar is at 110%) */
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 10px; /* Small font size */
+            color: #fff;
+            text-shadow: 1px 1px 1px #000; /* Shadow for readability */
+            white-space: nowrap; /* Prevent name from wrapping */
+            z-index: 12; /* Above health bar */
+            pointer-events: none; /* Don't interfere with clicks */
+            user-select: none;
+            -webkit-user-select: none;
+            -ms-user-select: none;
+        }
         /* Health Bar (Above Entities) */
         .health-bar {
             position: absolute;
@@ -403,6 +418,27 @@
         const AI_CHEST_INTERACT_DIST = 25;  // How close AI needs to be to 'open' a chest
         const AI_STUCK_THRESHOLD = 0.75; // Seconds before attempting to unstick AI
         const AI_UNSTICK_FORCE = 8; // Pixels to nudge when stuck
+        const AI_NAMES = [
+            "ChadGamer", "KarenMode", "SigmaGrind", "OnlyInOhio", "SusPlayer", "NoobMaster69",
+            "GigaBrain", "NPC_Energy", "KeyboardWarrior", "PotatoAim", "SaltyPretzel", "PepeLaugh",
+            "StonksOnly", "DiamondHands", "WojakPain", "DoomerScroll", "CoomerZoomer", "FloridaMan",
+            "RabbitFart35", "YeetCannon", "SkibidiBot", "RizzlerAI", "GrimaceShake", "PressF",
+            "PogChampAI", "ClownFiesta", "DeluluSolulu", "LowTierBot", "GodTierNoob", "Brainlet",
+            "NPC_007", "Agent404", "GlitchLord", "LagMonster", "SpeedHax", "WallBangPro",
+            "TriggerHappy", "TacticalBacon", "SilentButDeadly", "LeeroyJenkinsAI", "ScreamingGoat",
+            "DogeMuchWow", "GrumpyBot", "NyanCatFly", "HarambeLives", "LeftSharkDance", "ErmahgerdAI",
+            "RickRolledYa", "NotABot", "DefinitelyHuman", "BigBrainPlays", "SmolBrain", "ZoomerDoomer",
+            "BoomerShooter", "CringeKing", "BasedAI", "RedpilledBot", "BluepilledNPC", "AI_Gone_Wild",
+            "Error404NameNotFound", "BottyMcBotface", "YourWorstNightmare", "FreeKill", "TargetPractice",
+            "CamperJoe", "RusherB", "SprayAndPray", "OneTapWonder", "ClutchOrKickAI", "AFK_Bot",
+            "StreamSniperAlert", "GhostPepper", "SavageCabbage", "WittyKitty", "DankMemeLord",
+            "CodeGuzzler", "PixelPusher", "VectorVandal", "BinaryBard", "LogicBully", "RecursiveRager",
+            "VariableViper", "SyntaxSamurai", "LoopLlama", "AlgorithmAlpaca", "DebugDuck", "ByteKnight",
+            "ScriptKiddiePro", "KernelKangaroo", "FirewallFox", "TrojanTurtle", "MalwareMongoose",
+            "PhishingPiranha", "RansomRam", "SpywareSparrow", "AdwareAntelope", "BotnetBadger"
+            // Add more names to ensure variety if you have more than 100 AIs or want less repetition
+        ];
+        let aiNameCounter = 0; // To cycle through names
 
         // --- Map Generation Constants ---
         const OCEAN_BORDER_TILES = 3; // How many tiles thick the ocean is
@@ -537,20 +573,20 @@
             return Math.atan2(y2 - y1, x2 - x1);
         }
 
-        // --- Entity Class (Restored Constructor) ---
         class Entity {
-            constructor(x, y, size, color, type = 'entity') {
+            constructor(x, y, size, color, type = 'entity', name = null) {
                 this.x = x;
                 this.y = y;
                 this.size = size;
-                this.width = size;
-                this.height = size;
+                this.width = size; // For collision detection consistency
+                this.height = size; // For collision detection consistency
                 this.vx = 0;
                 this.vy = 0;
                 this.angle = 0;
                 this.health = MAX_HEALTH;
                 this.maxHealth = MAX_HEALTH;
                 this.type = type;
+                this.name = name; // Store the name
 
                 this.element = document.createElement('div');
                 this.element.classList.add('entity', type);
@@ -569,24 +605,43 @@
                 gameContainer.appendChild(this.element);
                 gameContainer.appendChild(this.healthBarElement);
 
+                // Create and append name element if a name is provided (mostly for AI)
+                if (this.name && this.type === 'ai') {
+                    this.nameElement = document.createElement('div');
+                    this.nameElement.classList.add('entity-name');
+                    this.nameElement.textContent = this.name;
+                    // Initial position, will be updated in `update`
+                    this.nameElement.style.left = `${this.x}px`;
+                    this.nameElement.style.top = `${this.y - this.size / 2 - 32}px`; // Approximate initial above health bar
+                    gameContainer.appendChild(this.nameElement);
+                } else {
+                    this.nameElement = null;
+                }
+
                 this.lastShotTime = 0;
-                this.weapon = null;
-                this.isHiding = false;
+                this.weapon = null; // Weapon type string, e.g., 'AR'
+                this.isHiding = false; // If in a bush
 
-                this.aiTarget = null;
-                this.aiReactionTime = type === 'ai' ? getRandom(0.2, 0.6) : 0;
-                this.aiAimStartTime = 0;
+                // AI-specific properties
+                this.aiTarget = null; // Target entity for combat
+                this.aiReactionTime = type === 'ai' ? getRandom(0.2, 0.6) : 0; // Seconds
+                this.aiAimStartTime = 0; // Timestamp when aiming started
                 this.aiIsAiming = false;
-                this.aiInaccuracy = type === 'ai' ? getRandom(0.03, 0.1) : 0;
-                this.aiLastPosition = { x: this.x, y: this.y };
-                this.aiTimeStuck = 0;
+                this.aiInaccuracy = type === 'ai' ? getRandom(0.03, 0.1) : 0; // Radians
+                this.aiLastPosition = { x: this.x, y: this.y }; // For stuck detection
+                this.aiTimeStuck = 0; // Seconds stuck
 
-                this.aiWanderTargetX = null;
-                this.aiWanderTargetY = null;
-                this.aiWanderTimer = 0;
-                this.aiState = 'idle';
+                this.aiWanderTargetX = null; // Target x for wandering
+                this.aiWanderTargetY = null; // Target y for wandering
+                this.aiWanderTimer = 0; // Time until new wander target
+                this.aiState = 'idle'; // Current AI state: 'idle', 'wandering', 'looting', 'engaging', 'fleeing'
 
-                this.lastStuckFleeingSideStepDirection = (Math.random() < 0.5) ? 1 : -1; // 1 for right, -1 for left relative to target
+                // For AI fleeing stuck logic
+                this.lastStuckFleeingSideStepDirection = (Math.random() < 0.5) ? 1 : -1; // 1 for right, -1 for left
+
+                if (type === 'player') {
+                    this.healthKits = 0; // Player specific
+                }
             }
 
             update(dt) {
@@ -595,97 +650,122 @@
                 let nextX = this.x + this.vx * dt;
                 let nextY = this.y + this.vy * dt;
 
+                // --- Boundary and Terrain Collision (Ocean) ---
                 let collidedWithBoundary = false;
                 const checkRadius = this.size / 2;
+                // Check multiple points around the entity's next position
                 const boundaryPoints = [
-                     { x: nextX - checkRadius, y: nextY - checkRadius }, { x: nextX + checkRadius, y: nextY - checkRadius },
-                     { x: nextX - checkRadius, y: nextY + checkRadius }, { x: nextX + checkRadius, y: nextY + checkRadius },
-                     { x: nextX + (this.vx > 0 ? checkRadius : (this.vx < 0 ? -checkRadius : 0)), y: nextY },
-                     { x: nextX, y: nextY + (this.vy > 0 ? checkRadius : (this.vy < 0 ? -checkRadius : 0))}
+                    { x: nextX - checkRadius, y: nextY - checkRadius }, { x: nextX + checkRadius, y: nextY - checkRadius },
+                    { x: nextX - checkRadius, y: nextY + checkRadius }, { x: nextX + checkRadius, y: nextY + checkRadius },
+                    // Cardinal direction checks for more precise collision against tile edges
+                    { x: nextX + (this.vx > 0 ? checkRadius : (this.vx < 0 ? -checkRadius : 0)), y: nextY },
+                    { x: nextX, y: nextY + (this.vy > 0 ? checkRadius : (this.vy < 0 ? -checkRadius : 0))}
                 ];
 
                 for (const point of boundaryPoints) {
-                     const tileX = Math.floor(point.x / TILE_SIZE);
-                     const tileY = Math.floor(point.y / TILE_SIZE);
+                    const tileX = Math.floor(point.x / TILE_SIZE);
+                    const tileY = Math.floor(point.y / TILE_SIZE);
 
-                     if (gameState.mapGrid[tileY]?.[tileX] === 'ocean') {
-                         collidedWithBoundary = true;
-                         const currentTileX = Math.floor(this.x / TILE_SIZE);
-                         const currentTileY = Math.floor(this.y / TILE_SIZE);
+                    if (gameState.mapGrid[tileY]?.[tileX] === 'ocean') {
+                        collidedWithBoundary = true;
+                        // Try to resolve collision by stopping movement into the ocean tile
+                        const currentTileX = Math.floor(this.x / TILE_SIZE);
+                        const currentTileY = Math.floor(this.y / TILE_SIZE);
 
-                         if (tileX !== currentTileX && gameState.mapGrid[currentTileY]?.[tileX] === 'ocean') {
-                             this.vx = 0; nextX = this.x;
-                         }
-                         if (tileY !== currentTileY && gameState.mapGrid[tileY]?.[currentTileX] === 'ocean') {
-                             this.vy = 0; nextY = this.y;
-                         }
-                          const finalTileX = Math.floor(nextX / TILE_SIZE);
-                          const finalTileY = Math.floor(nextY / TILE_SIZE);
-                          if(gameState.mapGrid[finalTileY]?.[finalTileX] === 'ocean') {
-                              this.vx = 0; this.vy = 0; nextX = this.x; nextY = this.y;
-                          }
-                         break;
-                     }
+                        // If moving into an ocean tile horizontally, stop horizontal movement
+                        if (tileX !== currentTileX && gameState.mapGrid[currentTileY]?.[tileX] === 'ocean') {
+                            this.vx = 0; nextX = this.x;
+                        }
+                        // If moving into an ocean tile vertically, stop vertical movement
+                        if (tileY !== currentTileY && gameState.mapGrid[tileY]?.[currentTileX] === 'ocean') {
+                            this.vy = 0; nextY = this.y;
+                        }
+                        // Final check: if still in ocean after partial correction, fully stop
+                        const finalTileX = Math.floor(nextX / TILE_SIZE);
+                        const finalTileY = Math.floor(nextY / TILE_SIZE);
+                        if(gameState.mapGrid[finalTileY]?.[finalTileX] === 'ocean') {
+                            this.vx = 0; this.vy = 0; nextX = this.x; nextY = this.y;
+                        }
+                        break; // One ocean collision is enough to adjust
+                    }
                 }
-                 this.x = nextX;
-                 this.y = nextY;
+                this.x = nextX;
+                this.y = nextY;
 
-                 const entityRect = { x: this.x - this.size / 2, y: this.y - this.size / 2, width: this.size, height: this.size };
-                 gameState.obstacles.forEach(obstacle => {
-                     if (!obstacle.isBush) {
-                         const obstacleRect = { x: obstacle.x, y: obstacle.y, width: obstacle.width, height: obstacle.height };
-                         if (checkCollision(entityRect, obstacleRect)) {
-                             const overlapX = (this.size / 2 + obstacle.width / 2) - Math.abs(this.x - (obstacle.x + obstacle.width / 2));
-                             const overlapY = (this.size / 2 + obstacle.height / 2) - Math.abs(this.y - (obstacle.y + obstacle.height / 2));
-                             if (overlapX < overlapY) {
-                                 this.x += (this.x < obstacle.x + obstacle.width / 2) ? -overlapX : overlapX;
-                                 this.vx = 0;
-                             } else {
-                                 this.y += (this.y < obstacle.y + obstacle.height / 2) ? -overlapY : overlapY;
-                                 this.vy = 0;
-                             }
-                              entityRect.x = this.x - this.size / 2;
-                              entityRect.y = this.y - this.size / 2;
-                         }
-                     }
-                 });
-
-                 this.x = Math.max(this.size / 2, Math.min(MAP_WIDTH_PX - this.size / 2, this.x));
-                 this.y = Math.max(this.size / 2, Math.min(MAP_HEIGHT_PX - this.size / 2, this.y));
-
-                this.isHiding = false;
-                const currentEntityRect = { x: this.x - this.size / 2, y: this.y - this.size / 2, width: this.size, height: this.size };
+                // --- Obstacle Collision (Rocks, Walls) ---
+                const entityRect = { x: this.x - this.size / 2, y: this.y - this.size / 2, width: this.size, height: this.size };
                 gameState.obstacles.forEach(obstacle => {
-                   if (obstacle.isBush) {
-                       const bushRect = { x: obstacle.x, y: obstacle.y, width: obstacle.width, height: obstacle.height };
-                       if (checkCollision(currentEntityRect, bushRect)) {
-                          this.isHiding = true;
-                       }
-                   }
+                    if (!obstacle.isBush) { // Bushes don't collide, they hide
+                        const obstacleRect = { x: obstacle.x, y: obstacle.y, width: obstacle.width, height: obstacle.height };
+                        if (checkCollision(entityRect, obstacleRect)) {
+                            // Simple push-out collision response
+                            const overlapX = (this.size / 2 + obstacle.width / 2) - Math.abs(this.x - (obstacle.x + obstacle.width / 2));
+                            const overlapY = (this.size / 2 + obstacle.height / 2) - Math.abs(this.y - (obstacle.y + obstacle.height / 2));
+
+                            if (overlapX < overlapY) { // Horizontal collision is shallower
+                                this.x += (this.x < obstacle.x + obstacle.width / 2) ? -overlapX : overlapX;
+                                this.vx = 0; // Stop horizontal movement
+                            } else { // Vertical collision is shallower or equal
+                                this.y += (this.y < obstacle.y + obstacle.height / 2) ? -overlapY : overlapY;
+                                this.vy = 0; // Stop vertical movement
+                            }
+                            // Update entityRect for subsequent collision checks in the same frame if any
+                            entityRect.x = this.x - this.size / 2;
+                            entityRect.y = this.y - this.size / 2;
+                        }
+                    }
                 });
 
+                // Clamp position to map bounds (after obstacle collision)
+                this.x = Math.max(this.size / 2, Math.min(MAP_WIDTH_PX - this.size / 2, this.x));
+                this.y = Math.max(this.size / 2, Math.min(MAP_HEIGHT_PX - this.size / 2, this.y));
+
+                // --- Bush Hiding ---
+                this.isHiding = false;
+                const currentEntityRectForBush = { x: this.x - this.size / 2, y: this.y - this.size / 2, width: this.size, height: this.size };
+                gameState.obstacles.forEach(obstacle => {
+                if (obstacle.isBush) {
+                    const bushRect = { x: obstacle.x, y: obstacle.y, width: obstacle.width, height: obstacle.height };
+                    if (checkCollision(currentEntityRectForBush, bushRect)) {
+                        this.isHiding = true;
+                    }
+                }
+                });
+
+                // --- Update DOM Elements ---
                 if (this.element) {
                     this.element.style.opacity = this.isHiding ? '0.5' : '1';
                     this.element.style.left = `${this.x - this.size / 2}px`;
                     this.element.style.top = `${this.y - this.size / 2}px`;
                     this.element.style.transform = `rotate(${this.angle}rad)`;
                 } else {
-                    console.error("Entity element missing for:", this);
+                    // console.error("Entity element missing for:", this); // Can be noisy, enable for debug
                 }
 
+                // Health Bar
                 if (this.healthBarElement && this.healthBarInnerElement) {
-                    this.healthBarElement.style.left = `${this.x}px`;
-                    this.healthBarElement.style.top = `${this.y - this.size / 2 - 10}px`;
+                    this.healthBarElement.style.left = `${this.x}px`; // Centered horizontally with entity center
+                    this.healthBarElement.style.top = `${this.y - this.size / 2 - 10}px`; // Above entity
                     const healthPercent = Math.max(0, (this.health / this.maxHealth) * 100);
                     this.healthBarInnerElement.style.width = `${healthPercent}%`;
                 } else {
-                     console.error("Entity health bar elements missing for:", this);
+                    // console.error("Entity health bar elements missing for:", this);
+                }
+
+                // Name Element (for AI)
+                if (this.nameElement) {
+                    this.nameElement.style.left = `${this.x}px`; // Centered horizontally
+                    // Positioned above the health bar (health bar top is y - size/2 - 10)
+                    // Assuming name font size around 10px, health bar height 5px.
+                    // Entity top: this.y - this.size / 2
+                    // Health bar top: this.y - this.size / 2 - 10px
+                    // Name top: (health bar top) - (name font height + gap)
+                    this.nameElement.style.top = `${this.y - this.size / 2 - 10 - 12}px`; // Adjust 12 for spacing
                 }
             }
 
-
             shoot(targetX, targetY) {
-                const now = gameState.gameTime;
+                const now = gameState.gameTime; // Assuming gameState.gameTime is ms
                 if (!this.weapon || !WEAPONS[this.weapon] || now < this.lastShotTime + WEAPONS[this.weapon].fireRate) {
                     return;
                 }
@@ -694,6 +774,7 @@
                 const weapon = WEAPONS[this.weapon];
                 let angleToTarget = getAngle(this.x, this.y, targetX, targetY);
 
+                // AI Inaccuracy
                 if (this.type === 'ai' && this.aiInaccuracy > 0) {
                     angleToTarget += getRandom(-this.aiInaccuracy, this.aiInaccuracy);
                 }
@@ -704,78 +785,91 @@
                         createProjectile(this.x, this.y, spreadAngle, weapon, this);
                     }
                 } else {
-                     createProjectile(this.x, this.y, angleToTarget, weapon, this);
+                    createProjectile(this.x, this.y, angleToTarget, weapon, this);
                 }
             }
 
             takeDamage(amount) {
-                if (this.health <= 0) return;
+                if (this.health <= 0) return; // Already dead
                 this.health -= amount;
-                if (this.healthBarInnerElement) {
+
+                if (this.healthBarInnerElement) { // Update visual health bar immediately
                     const healthPercent = Math.max(0, (this.health / this.maxHealth) * 100);
                     this.healthBarInnerElement.style.width = `${healthPercent}%`;
                 }
+
                 if (this.health <= 0) {
                     this.die();
                 }
+
                 if (this.type === 'player') {
-                    updatePlayerUI();
+                    updatePlayerUI(); // Update main UI health bar for player
                 }
             }
 
             die() {
-                console.log(`${this.type} died`);
+                console.log(`${this.type}${this.name ? ' (' + this.name + ')' : ''} died`);
+
+                // Remove visual elements from DOM
                 if (this.element && this.element.parentNode) this.element.parentNode.removeChild(this.element);
                 if (this.healthBarElement && this.healthBarElement.parentNode) this.healthBarElement.parentNode.removeChild(this.healthBarElement);
+                if (this.nameElement && this.nameElement.parentNode) this.nameElement.parentNode.removeChild(this.nameElement);
+
+                // Clear references to DOM elements
                 this.element = null;
                 this.healthBarElement = null;
                 this.healthBarInnerElement = null;
+                this.nameElement = null;
 
                 if (this.type === 'player') {
-                     gameState.player = null;
-                     showEndScreen("Game Over!");
-                     gameState.gameOver = true;
+                    gameState.player = null; // Clear player reference in game state
+                    showEndScreen("Game Over!");
+                    gameState.gameOver = true;
                 } else if (this.type === 'ai') {
                     const index = gameState.ai.indexOf(this);
                     if (index > -1) {
-                        gameState.ai.splice(index, 1);
+                        gameState.ai.splice(index, 1); // Remove from AI array
+                        // Remove minimap dot if it exists for this AI
                         if (gameState.minimapAIDots[index] && gameState.minimapAIDots[index].parentNode) {
-                           gameState.minimapAIDots[index].parentNode.removeChild(gameState.minimapAIDots[index]);
+                        gameState.minimapAIDots[index].parentNode.removeChild(gameState.minimapAIDots[index]);
                         }
-                        gameState.minimapAIDots.splice(index, 1);
+                        gameState.minimapAIDots.splice(index, 1); // Remove from minimap dots array
                     }
-                    if (gameState.ai.length === 0 && gameState.player) {
-                       showEndScreen("You Win!");
-                       gameState.gameOver = true;
+                    // Check for win condition (player alive, all AI dead)
+                    if (gameState.ai.length === 0 && gameState.player && gameState.player.health > 0) {
+                    showEndScreen("You Win!");
+                    gameState.gameOver = true;
                     }
                 }
-                updatePlayerCountUI();
+                updatePlayerCountUI(); // Update the player count display
             }
 
             pickupItem(item) {
-                 if (!item) return false;
+                if (!item) return false;
+
                 if (item.itemType === 'weapon') {
                     this.weapon = item.weaponType;
                     if (this.type === 'player') updatePlayerUI();
-                    console.log(`${this.type} picked up ${item.weaponType}`);
+                    console.log(`${this.type}${this.name ? ' ('+this.name+')' : ''} picked up ${item.weaponType}`);
                 } else if (item.itemType === 'healthkit') {
                     if (this.type === 'player') {
-                        if (this.healthKits === undefined) this.healthKits = 0;
+                        // Player-specific health kit logic
+                        if (this.healthKits === undefined) this.healthKits = 0; // Should be initialized in constructor
                         if (this.healthKits < MAX_HEALTH_KITS) {
                             this.healthKits++;
                             updatePlayerUI();
                             console.log(`Player picked up Health Kit (${this.healthKits}/${MAX_HEALTH_KITS})`);
                         } else {
-                             return false;
+                            return false; // Player's inventory is full
                         }
                     } else {
-                        return false;
+                        // AI currently doesn't use health kits, or if they do, logic would go here
+                        return false; // AI can't pick up kits for now
                     }
                 }
-                 return true;
+                return true; // Item was successfully picked up
             }
         }
-
 
         // --- Projectile Class ---
         class Projectile {
@@ -1034,7 +1128,7 @@
                  return true;
             }
 
-             const NUM_OBSTACLES = 50; const NUM_BUSHES = 30; const NUM_WALL_STRUCTURES = 8; // Increased wall structures
+             const NUM_OBSTACLES = 20; const NUM_BUSHES = 10; const NUM_WALL_STRUCTURES = 5; // Increased wall structures
              for (let i = 0; i < NUM_OBSTACLES; i++) {
                  let obsX, obsY, obsSize, validObsSpawn; let attempts = 0;
                  do {
