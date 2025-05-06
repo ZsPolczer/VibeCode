@@ -80,38 +80,38 @@
         /* Entity Name (Above Health Bar) */
         .entity-name {
             position: absolute;
-            bottom: 135%; /* Position above the health bar (health bar is at 110%) */
-            left: 50%;
-            transform: translateX(-50%);
-            font-size: 10px; /* Small font size */
+            /* bottom: 135%; */ /* REMOVE */
+            /* left: 50%; */ /* REMOVE */
+            /* transform: translateX(-50%); */ /* REMOVE */
+            font-size: 10px;
             color: #fff;
-            text-shadow: 1px 1px 1px #000; /* Shadow for readability */
-            white-space: nowrap; /* Prevent name from wrapping */
-            z-index: 12; /* Above health bar */
-            pointer-events: none; /* Don't interfere with clicks */
+            text-shadow: 1px 1px 1px #000;
+            white-space: nowrap;
+            z-index: 12;
+            pointer-events: none;
             user-select: none;
             -webkit-user-select: none;
             -ms-user-select: none;
+            text-align: center; /* Add this to help center the text within its own bounds */
         }
+
         /* Health Bar (Above Entities) */
         .health-bar {
             position: absolute;
-            bottom: 110%; /* Position above the entity */
-            left: 50%;
-            transform: translateX(-50%);
+            /* bottom: 110%; */ /* REMOVE */
+            /* left: 50%; */    /* REMOVE */
+            /* transform: translateX(-50%); */ /* REMOVE */
             width: 30px; /* Fixed width */
             height: 5px;
             background-color: #ccc;
             border: 1px solid #000;
-            z-index: 11;
-        }
-        .health-bar-inner {
+            z-index: 11;        .health-bar-inner {
             height: 100%;
             background-color: #28a745; /* Green */
             width: 100%; /* Starts full */
             transition: width 0.1s linear;
-        }
-
+        }}
+        
         /* Obstacles */
         .obstacle {
             position: absolute;
@@ -738,29 +738,53 @@
                     this.element.style.left = `${this.x - this.size / 2}px`;
                     this.element.style.top = `${this.y - this.size / 2}px`;
                     this.element.style.transform = `rotate(${this.angle}rad)`;
-                } else {
-                    // console.error("Entity element missing for:", this); // Can be noisy, enable for debug
                 }
+
+                const entityTopEdge = this.y - (this.size / 2); // Y-coordinate of the visual top of the entity circle
 
                 // Health Bar
                 if (this.healthBarElement && this.healthBarInnerElement) {
-                    this.healthBarElement.style.left = `${this.x}px`; // Centered horizontally with entity center
-                    this.healthBarElement.style.top = `${this.y - this.size / 2 - 10}px`; // Above entity
+                    // Center health bar horizontally above the entity
+                    const healthBarWidth = 30; // Must match your CSS .health-bar width
+                    this.healthBarElement.style.left = `${this.x - healthBarWidth / 2}px`;
+                    this.healthBarElement.style.top = `${entityTopEdge - 10}px`; // 10px above entity's top edge
                     const healthPercent = Math.max(0, (this.health / this.maxHealth) * 100);
                     this.healthBarInnerElement.style.width = `${healthPercent}%`;
-                } else {
-                    // console.error("Entity health bar elements missing for:", this);
                 }
 
                 // Name Element (for AI)
                 if (this.nameElement) {
-                    this.nameElement.style.left = `${this.x}px`; // Centered horizontally
-                    // Positioned above the health bar (health bar top is y - size/2 - 10)
-                    // Assuming name font size around 10px, health bar height 5px.
-                    // Entity top: this.y - this.size / 2
-                    // Health bar top: this.y - this.size / 2 - 10px
-                    // Name top: (health bar top) - (name font height + gap)
-                    this.nameElement.style.top = `${this.y - this.size / 2 - 10 - 12}px`; // Adjust 12 for spacing
+                    // To center the name, we ideally need its width.
+                    // Since text width varies, a common approach is to set a max-width or let text-align: center in CSS handle it,
+                    // and position its container's center at the entity's x.
+                    // For simplicity here, we'll assume the transform: translateX(-50%) trick can be re-added if needed,
+                    // or we estimate. Let's try centering it based on its own width if possible, or use text-align.
+
+                    // Option A: If .entity-name has text-align: center and we position its left edge
+                    // The nameElement's width is dynamic. If we give it a fixed width or use text-align: center,
+                    // we can position its centerpoint.
+                    // Let's assume `text-align: center` in CSS helps. We will position the *container* of the name.
+                    // For now, let's roughly center its container and rely on text-align.
+                    // A more precise centering would involve measuring the text.
+                    const nameElementApproxWidth = this.name.length * 6; // Very rough estimate (6px per char)
+                    this.nameElement.style.width = 'auto'; // Let it size to content
+                    // To truly center, you'd do: this.x - this.nameElement.offsetWidth / 2
+                    // However, offsetWidth might not be ready or accurate immediately.
+                    // So, we set left to this.x and use transform in CSS, or rely on text-align: center if the element has a defined width.
+
+                    // Let's try keeping the JS simple and rely on CSS transform for centering the name if text-align isn't enough.
+                    // Re-add transform for centering if text-align: center on .entity-name isn't perfect.
+                    // For now, let's position its left edge to be roughly centered.
+                    // The health bar top is entityTopEdge - 10. Health bar height is 5.
+                    const healthBarTopY = entityTopEdge - 10;
+                    const healthBarHeight = 5; // from CSS
+                    const gapBetweenHealthAndName = 2; // Small gap
+                    const nameElementHeightApprox = 10; // font-size
+
+                    // Position the name element's left relative to the entity's center,
+                    // and its top above the health bar.
+                    this.nameElement.style.left = `${this.x - (this.nameElement.offsetWidth / 2)}px`; // Center the name div itself
+                    this.nameElement.style.top = `${healthBarTopY - nameElementHeightApprox - gapBetweenHealthAndName}px`;
                 }
             }
 
@@ -1246,10 +1270,16 @@
                  gameState.gameOver = true; return;
              }
 
-            const NUM_AI = 50;
+const NUM_AI = 30; // Set to 100 as per your request, or 50 as in your code
+            aiNameCounter = 0; // Make sure this is reset at the start of initGame
             gameState.minimapAIDots = [];
             for (let i = 0; i < NUM_AI; i++) {
                  let spawnX, spawnY, validSpawn; let attempts = 0;
+
+                 // Assign a name
+                 const aiName = AI_NAMES[aiNameCounter % AI_NAMES.length];
+                 aiNameCounter++;
+
                  do {
                      const minSpawnX = (OCEAN_BORDER_TILES + BEACH_BORDER_TILES) * TILE_SIZE + AI_SIZE / 2; const maxSpawnX = MAP_WIDTH_PX - minSpawnX;
                      const minSpawnY = (OCEAN_BORDER_TILES + BEACH_BORDER_TILES) * TILE_SIZE + AI_SIZE / 2; const maxSpawnY = MAP_HEIGHT_PX - minSpawnY;
@@ -1261,16 +1291,18 @@
                      }
                      attempts++;
                  } while (!validSpawn && attempts < 50);
+
                  if (validSpawn) {
                      try {
-                        const ai = new Entity(spawnX, spawnY, AI_SIZE, '#dc3545', 'ai');
+                        // ***** MAKE SURE aiName IS PASSED HERE *****
+                        const ai = new Entity(spawnX, spawnY, AI_SIZE, '#dc3545', 'ai', aiName);
                         gameState.ai.push(ai);
                         const aiDot = document.createElement('div');
                         aiDot.classList.add('minimap-ai');
                         minimapContainer.appendChild(aiDot);
                         gameState.minimapAIDots.push(aiDot);
                      } catch (error) {
-                         console.error(`Failed to create AI entity ${i}:`, error);
+                         console.error(`Failed to create AI entity ${i} (Name: ${aiName}):`, error);
                      }
                  } else {
                      console.warn("Could not find valid spawn for AI", i);
