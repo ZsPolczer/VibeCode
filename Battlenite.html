@@ -426,7 +426,7 @@
         const MAX_JOYSTICK_DIST = 30; // Max pixels the thumb can move from center
 
         // --- Game Constants ---
-        const TILE_SIZE = 40; // Pixel size of a grid tile
+        const TILE_SIZE = 20; // Pixel size of a grid tile
         const MAP_WIDTH_TILES = 40;
         const MAP_HEIGHT_TILES = 40;
         const MAP_WIDTH_PX = MAP_WIDTH_TILES * TILE_SIZE;
@@ -439,7 +439,7 @@
         const PROJECTILE_SPEED = 400;
         const CHEST_SIZE = 20;
         const ITEM_SIZE = 15;
-        const MAX_HEALTH = 100;
+        const MAX_HEALTH = 300;
         const MAX_HEALTH_KITS = 3;
         const HEALTH_KIT_HEAL_AMOUNT = 50;
         const HEALTH_KIT_USE_TIME = 1000; // ms
@@ -585,6 +585,8 @@
                 this.aiWanderTargetY = null;
                 this.aiWanderTimer = 0;
                 this.aiState = 'idle';
+
+                this.lastStuckFleeingSideStepDirection = (Math.random() < 0.5) ? 1 : -1; // 1 for right, -1 for left relative to target
             }
 
             update(dt) {
@@ -1150,7 +1152,7 @@
                  gameState.gameOver = true; return;
              }
 
-            const NUM_AI = 10;
+            const NUM_AI = 50;
             gameState.minimapAIDots = [];
             for (let i = 0; i < NUM_AI; i++) {
                  let spawnX, spawnY, validSpawn; let attempts = 0;
@@ -1474,12 +1476,57 @@
                     ai.aiTimeStuck += dt;
                 } else { ai.aiTimeStuck = 0; }
                 ai.aiLastPosition.x = ai.x; ai.aiLastPosition.y = ai.y;
+                                // Existing code before the stuck check:
+                // ai.aiLastPosition.x = ai.x; ai.aiLastPosition.y = ai.y;
+                // if (ai.aiTimeStuck > AI_STUCK_THRESHOLD) { ... }
+
+                // --- START OF REPLACEMENT ---
                 if (ai.aiTimeStuck > AI_STUCK_THRESHOLD) {
-                    const nudgeAngle = getRandom(0, Math.PI * 2);
-                    ai.vx = Math.cos(nudgeAngle) * AI_SPEED * 0.6;
-                    ai.vy = Math.sin(nudgeAngle) * AI_SPEED * 0.6;
-                    ai.aiTimeStuck = 0; ai.aiIsAiming = false; ai.aiAimStartTime = 0; ai.aiWanderTimer = 0.1;
+                    let unstickVx, unstickVy;
+                    let resetWanderTarget = true; // Whether to force re-evaluation of wander target
+
+                    if (ai.aiState === 'fleeing') {
+                        const angleToStormCenter = getAngle(ai.x, ai.y, gameState.stormCenterX, gameState.stormCenterY);
+
+                        // Flip the side-step direction each time it gets stuck while fleeing
+                        // This ensures it tries to "wiggle" out by alternating left/right slides
+                        ai.lastStuckFleeingSideStepDirection *= -1;
+
+                        const sideStepAngle = angleToStormCenter + (ai.lastStuckFleeingSideStepDirection * Math.PI / 2); // Perpendicular to storm direction
+
+                        // Move mostly sideways, with a small component towards the storm center
+                        unstickVx = Math.cos(sideStepAngle) * AI_SPEED * 0.8 + Math.cos(angleToStormCenter) * AI_SPEED * 0.2;
+                        unstickVy = Math.sin(sideStepAngle) * AI_SPEED * 0.8 + Math.sin(angleToStormCenter) * AI_SPEED * 0.2;
+
+                        // Optional: console.log(`AI ${aiIndex} stuck fleeing, trying side-step. Dir: ${ai.lastStuckFleeingSideStepDirection}`);
+                        resetWanderTarget = false; // When fleeing, we don't want it to immediately wander. It should continue trying to flee.
+                    } else {
+                        // Original random nudge for non-fleeing states (wandering, looting, engaging and stuck)
+                        const nudgeAngle = getRandom(0, Math.PI * 2);
+                        unstickVx = Math.cos(nudgeAngle) * AI_SPEED * 0.6;
+                        unstickVy = Math.sin(nudgeAngle) * AI_SPEED * 0.6;
+                        // Optional: console.log(`AI ${aiIndex} stuck (state: ${ai.aiState}), random nudge.`);
+                    }
+
+                    ai.vx = unstickVx; // Override current vx/vy with the unstick attempt
+                    ai.vy = unstickVy;
+                    if (unstickVx !== 0 || unstickVy !== 0) { // Avoid division by zero for getAngle
+                         ai.angle = getAngle(0, 0, ai.vx, ai.vy); // Point AI in the direction of its unsticking movement
+                    }
+
+
+                    ai.aiTimeStuck = 0; // Reset stuck timer
+                    ai.aiIsAiming = false; // Stop aiming if stuck
+                    ai.aiAimStartTime = 0;
+
+                    if (resetWanderTarget) {
+                        ai.aiWanderTimer = 0.1; // For non-fleeing states, reset wander timer to re-evaluate target soon
+                        ai.aiWanderTargetX = null; // Force re-pick of wander target
+                        ai.aiWanderTargetY = null;
+                    }
                 }
+                // --- END OF REPLACEMENT ---
+
                 ai.update(dt);
             });
         }
