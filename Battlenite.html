@@ -1578,7 +1578,9 @@
                  if (currentPhaseData) {
                     const damagePerSecond = currentPhaseData.damage;
                     if (gameState.player && gameState.player.health > 0) {
-                        const playerDist = getDistance(gameState.player.x, gameState.player.y, gameState.stormCenterX, gameState.stormRadius);
+                        //  VVVVVVVVVVV THIS IS THE FIX VVVVVVVVVVV
+                        const playerDist = getDistance(gameState.player.x, gameState.player.y, gameState.stormCenterX, gameState.stormCenterY);
+                        //  ^^^^^^^^^^^^^ THIS IS THE FIX ^^^^^^^^^^^^^
                         if (playerDist > gameState.stormRadius) {
                             gameState.player.takeDamage(damagePerSecond * dt);
                         }
