@@ -1768,11 +1768,37 @@
         }
 
         function updateStorm(dt) {
-             if (gameState.gameOver || gameState.currentStormPhase === undefined) return; // Add phase check
+             // --- Pre-checks ---
+             // Ensure dt is a valid positive number
+             if (typeof dt !== 'number' || dt <= 0 || isNaN(dt)) {
+                 // console.warn(`updateStorm skipped: Invalid dt=${dt}`);
+                 // Still update UI/Minimap even if timer doesn't change this frame
+                 updateStormUI();
+                 updateMinimapStorm();
+                 return;
+             }
+             // Check if game is over or timer is invalid
+             if (gameState.gameOver || typeof gameState.stormTimer !== 'number' || isNaN(gameState.stormTimer)) {
+                 // console.log(`updateStorm returning early: gameOver=${gameState.gameOver}, timer=${gameState.stormTimer}`);
+                  // Still update UI/Minimap
+                 updateStormUI();
+                 updateMinimapStorm();
+                 return;
+             }
 
+             // --- Log values *before* decrementing ---
+             // console.log(`Storm Update - Before: timer=${gameState.stormTimer.toFixed(2)}, dt=${dt.toFixed(4)}`);
+
+             // --- Decrement Timer ---
              gameState.stormTimer -= dt;
 
-             if (gameState.stormTimer <= 0) {
+              // --- Log values *after* decrementing ---
+             // console.log(`Storm Update - After: timer=${gameState.stormTimer.toFixed(2)}`);
+
+
+             // --- Phase Transition Logic ---
+             if (gameState.stormTimer <= 0 && gameState.stormTimer !== Infinity) { // Added check for Infinity
+
                  if (!gameState.isStormShrinking) { // Waiting ended -> Start shrinking
                      gameState.currentStormPhase++;
                      const phaseIndex = Math.min(gameState.currentStormPhase, STORM_PHASES.length - 1);
@@ -1782,11 +1808,11 @@
 
                      if (currentPhaseData.shrinkDuration > 0) {
                         gameState.isStormShrinking = true;
-                        gameState.stormTimer = currentPhaseData.shrinkDuration;
+                        gameState.stormTimer = currentPhaseData.shrinkDuration; // Set timer for shrink duration
 
-                        const mapCenterRadius = Math.min(MAP_WIDTH_PX, MAP_HEIGHT_PX) / 2; // Base size on smaller map dimension
+                        const mapCenterRadius = Math.min(MAP_WIDTH_PX, MAP_HEIGHT_PX) / 2;
                         const nextRadius = mapCenterRadius * currentPhaseData.radiusFraction;
-                        gameState.nextStormRadius = Math.max(5, nextRadius); // Ensure minimum radius
+                        gameState.nextStormRadius = Math.max(5, nextRadius);
 
                         const currentRadius = gameState.stormRadius;
                         const maxOffset = Math.max(0, currentRadius - gameState.nextStormRadius);
@@ -1796,19 +1822,19 @@
                         gameState.nextStormCenterX = gameState.stormCenterX + Math.cos(angle) * offset;
                         gameState.nextStormCenterY = gameState.stormCenterY + Math.sin(angle) * offset;
 
-                        // Clamp next center more robustly
                         gameState.nextStormCenterX = Math.max(gameState.nextStormRadius, Math.min(MAP_WIDTH_PX - gameState.nextStormRadius, gameState.nextStormCenterX));
                         gameState.nextStormCenterY = Math.max(gameState.nextStormRadius, Math.min(MAP_HEIGHT_PX - gameState.nextStormRadius, gameState.nextStormCenterY));
 
-                        // console.log(`Storm Phase ${phaseIndex + 1} SHRINK START`);
+                        console.log(`Storm Phase ${phaseIndex + 1} START SHRINK. Target radius ${Math.round(gameState.nextStormRadius)}px. Timer: ${gameState.stormTimer.toFixed(1)}s`);
 
-                     } else { // Final phase reached
-                         // console.log(`Storm Phase ${phaseIndex + 1} Final Size`);
-                         gameState.stormTimer = Infinity;
+                     } else { // Final phase reached (no shrink duration)
+                         console.log(`Storm Phase ${phaseIndex + 1} reached final size. No further shrinking.`);
+                         gameState.stormTimer = Infinity; // Stop timer effectively
                      }
 
                  } else { // Shrinking ended -> Start waiting
                      gameState.isStormShrinking = false;
+                     // Snap to target
                      gameState.stormRadius = gameState.nextStormRadius;
                      gameState.stormCenterX = gameState.nextStormCenterX;
                      gameState.stormCenterY = gameState.nextStormCenterY;
@@ -1817,30 +1843,41 @@
                      const nextPhaseData = STORM_PHASES[nextPhaseIndex];
                      if (!nextPhaseData) { console.error("Missing next storm phase data for index:", nextPhaseIndex); return; }
 
-                     gameState.stormTimer = nextPhaseData.waitDuration;
+                     gameState.stormTimer = nextPhaseData.waitDuration; // Set timer for next wait
 
                      const currentPhaseIndex = Math.min(gameState.currentStormPhase, STORM_PHASES.length - 1);
-                    // console.log(`Storm Phase ${currentPhaseIndex + 1} SHRINK END. Wait: ${Math.round(gameState.stormTimer)}s`);
-                     if (gameState.stormTimer === Infinity) { /* console.log("Final phase wait started."); */ }
-                 }
-             } // End timer check
+                     console.log(`Storm Phase ${currentPhaseIndex + 1} SHRINK COMPLETE. Radius: ${Math.round(gameState.stormRadius)}px. Waiting ${gameState.stormTimer === Infinity ? 'Infinite' : Math.round(gameState.stormTimer)+'s'}.`);
 
-             // Apply Storm Damage
+                 }
+             } // End timer check (<= 0)
+
+             // --- Apply Storm Damage ---
+             // (Run this regardless of timer state, as long as storm is active)
              if (gameState.currentStormPhase >= 0) {
                  const phaseIndex = Math.min(gameState.currentStormPhase, STORM_PHASES.length - 1);
                  const currentPhaseData = STORM_PHASES[phaseIndex];
-                 if (currentPhaseData) { // Check data exists
+                 if (currentPhaseData) {
                     const damagePerSecond = currentPhaseData.damage;
-                    const entities = [gameState.player, ...gameState.ai].filter(e => e && e.health > 0); // Filter living entities
-                    entities.forEach(entity => {
-                        const distFromCenter = getDistance(entity.x, entity.y, gameState.stormCenterX, gameState.stormCenterY);
-                        if (distFromCenter > gameState.stormRadius) {
-                            entity.takeDamage(damagePerSecond * dt);
+                    // Check player first
+                    if (gameState.player && gameState.player.health > 0) {
+                        const playerDist = getDistance(gameState.player.x, gameState.player.y, gameState.stormCenterX, gameState.stormCenterY);
+                        if (playerDist > gameState.stormRadius) {
+                            gameState.player.takeDamage(damagePerSecond * dt);
+                        }
+                    }
+                    // Check AI
+                    gameState.ai.forEach(ai => {
+                        if (ai && ai.health > 0) {
+                             const aiDist = getDistance(ai.x, ai.y, gameState.stormCenterX, gameState.stormCenterY);
+                             if (aiDist > gameState.stormRadius) {
+                                 ai.takeDamage(damagePerSecond * dt);
+                             }
                         }
                     });
                  }
              }
 
+             // --- Update Visuals ---
              updateStormUI();
              updateMinimapStorm();
         } // End updateStorm
@@ -1953,63 +1990,46 @@
              messageScreen.style.display = 'none';
          }
 
-
         // --- Game Loop ---
         let animationFrameId = null;
         function gameLoop(timestamp) {
-            if (!gameState || gameState.gameOver) { // Added !gameState check
+            if (!gameState || gameState.gameOver) {
                  if (animationFrameId) cancelAnimationFrame(animationFrameId);
                  console.log("Game Over or State Invalid. Loop stopped.");
                  return;
             }
 
-            // Calculate deltaTime robustly
-            if (!gameState.lastTimestamp) gameState.lastTimestamp = timestamp; // Initialize if first frame
+            // --- Calculate deltaTime ---
+            if (!gameState.lastTimestamp || gameState.lastTimestamp <= 0) { // Robust initialization
+                 gameState.lastTimestamp = timestamp - 16; // Assume ~60fps for first frame if needed
+             }
             gameState.deltaTime = (timestamp - gameState.lastTimestamp) / 1000;
             gameState.lastTimestamp = timestamp;
 
-            // Prevent extreme deltaTime values on lag/resume
-            if (gameState.deltaTime > 0.1) gameState.deltaTime = 0.1;
-             if (gameState.deltaTime <= 0) { // Skip frame if dt is zero or negative
-                 animationFrameId = requestAnimationFrame(gameLoop);
-                 return;
-             }
-
-
-            gameState.gameTime += gameState.deltaTime * 1000;
-
-             const dt = gameState.deltaTime;
+            // Prevent extreme deltaTime values AND zero/negative dt before passing to updates
+            if (gameState.deltaTime > 0.1) {
+                 // console.warn(`DeltaTime capped from ${gameState.deltaTime.toFixed(4)} to 0.1`);
+                 gameState.deltaTime = 0.1;
+            }
+             // Ensure deltaTime is positive before proceeding with updates that rely on it
+             const dt = gameState.deltaTime > 0 ? gameState.deltaTime : 0.001; // Use a tiny positive value if dt is bad
              const dt_ms = dt * 1000;
 
+            gameState.gameTime += dt_ms; // Increment game time
+
+
             // --- Update Order ---
-            // 1. Handle Input / Player Actions (including shooting intent)
-            //    (This sets player velocity, angle, shooting state)
-            //    (Player pickup/chest interaction)
-
-            // 2. Update AI (sets AI velocity, angle, shooting state, chest opening)
-            updateAI(dt); // <<< UPDATE AI FIRST
-
-            // 3. Update Player (apply velocity, collision, hiding, element updates)
-             updatePlayer(dt); // <<< THEN UPDATE PLAYER (so AI reacts to previous frame's player pos)
-
-            // 4. Update Projectiles (movement, collision checks against updated entity positions)
+            updateAI(dt);
+            updatePlayer(dt);
             updateProjectiles(dt);
-
-            // 5. Update Health Kit Usage
             updateHealthKitUsage(dt_ms);
+            updateStorm(dt); // Pass the validated, positive dt
 
-            // 6. Update Storm (damage applied based on current entity positions)
-            updateStorm(dt);
-
-            // 7. Update UI & Minimap
-            updatePlayerCountUI(); // Handles deaths from projectiles/storm this frame
+            // --- UI / Minimap ---
+            updatePlayerCountUI();
             updateMinimap();
 
-            // 8. Check Win/Loss (mostly handled in entity.die, but double-check needed?)
-            //    If player died, gameOver flag is set.
-            //    If only player remains, win condition is set in AI die().
-
-            // 9. Request Next Frame
+            // --- Request Next Frame ---
             animationFrameId = requestAnimationFrame(gameLoop);
         } // End gameLoop
 
