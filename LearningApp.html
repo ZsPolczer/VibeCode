@@ -1,47 +1,49 @@
+html
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reading Comprehension Test - Part 1</title>
+    <title>Reading Comprehension Test</title>
     <style>
-        body { 
-            font-family: Arial, sans-serif; 
-            line-height: 1.6; 
-            margin: 0 auto; 
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0 auto;
             padding: 20px;
-            max-width: 800px; 
+            max-width: 800px;
             background-color: #f4f4f4;
             color: #333;
         }
-        #reading-app-container {
+        #reading-app-container, #questions-area {
             background-color: #fff;
             padding: 20px;
             border-radius: 8px;
             box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
         }
-        h1 {
+        h1, h2 {
             text-align: center;
             color: #333;
         }
-        #text-container { 
-            border: 1px solid #ddd; 
-            padding: 15px; 
-            margin-bottom: 20px; 
-            min-height: 400px; 
+        #text-container {
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin-bottom: 20px;
+            min-height: 300px; /* Adjusted min-height */
             background-color: #fff;
             border-radius: 5px;
-            white-space: pre-wrap; /* Preserves whitespace and newlines for general text */
-            overflow-y: auto; /* Add scroll for very long pages if needed */
+            white-space: pre-wrap;
+            overflow-y: auto;
         }
-        .navigation-buttons, #finish-reading-area { 
-            margin-top: 20px; 
-            text-align: center; 
+        .navigation-buttons, #finish-reading-area {
+            margin-top: 20px;
+            text-align: center;
         }
-        button { 
-            padding: 10px 20px; 
-            margin: 5px; 
-            cursor: pointer; 
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            cursor: pointer;
             background-color: #007bff;
             color: white;
             border: none;
@@ -62,14 +64,14 @@
             background-color: #545b62;
         }
         #confirmation-popup {
-            display: none; 
-            position: fixed; 
-            left: 50%; 
+            display: none;
+            position: fixed;
+            left: 50%;
             top: 50%;
-            transform: translate(-50%, -50%); 
+            transform: translate(-50%, -50%);
             padding: 30px;
-            background: white; 
-            border: 1px solid #ccc; 
+            background: white;
+            border: 1px solid #ccc;
             box-shadow: 0 4px 15px rgba(0,0,0,0.2);
             z-index: 1000;
             border-radius: 8px;
@@ -80,14 +82,16 @@
             margin-bottom: 20px;
             font-size: 18px;
         }
-        pre { 
-            background-color: #f8f9fa; 
-            padding: 15px; 
-            border-radius: 5px; 
-            overflow-x: auto; /* Horizontal scroll for wide code/tables */
+        pre {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
             border: 1px solid #eee;
             font-family: "Courier New", Courier, monospace;
             font-size: 0.9em;
+            white-space: pre-wrap; /* Allow wrapping within pre for long lines */
+            word-break: break-all; /* Break long words if necessary */
         }
         .page-info {
             text-align: center;
@@ -95,29 +99,100 @@
             font-style: italic;
             color: #555;
         }
+
+        /* Styles for Question Area */
+        #question-text-container {
+            margin-bottom: 20px;
+            padding: 15px;
+            border: 1px solid #eee;
+            border-radius: 5px;
+            background-color: #f8f9fa;
+        }
+        #options-container label {
+            display: block;
+            margin-bottom: 10px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+        #options-container label:hover {
+            background-color: #f0f0f0;
+        }
+        #options-container input[type="radio"] {
+            margin-right: 10px;
+            vertical-align: middle;
+        }
+        #submit-answer, #next-question, #back-to-reading {
+            margin-top: 15px;
+        }
+        #feedback {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+        }
+        #feedback-message {
+            font-weight: bold;
+            margin-top: 0;
+        }
+        #explanation {
+            margin-top: 10px;
+            font-size: 0.95em;
+            color: #555;
+        }
+        .correct-answer {
+            background-color: #d4edda !important;
+            border-color: #c3e6cb !important;
+            color: #155724 !important;
+            font-weight: bold;
+        }
+        .wrong-answer {
+            background-color: #f8d7da !important;
+            border-color: #f5c6cb !important;
+            color: #721c24 !important;
+        }
+        #illustration {
+            max-width: 100%;
+            height: auto;
+            margin-top: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
     </style>
 </head>
 <body>
     <div id="reading-app-container">
-
-
-        
         <h1>Reading Material</h1>
-        
         <div id="text-container">
             <!-- Text content will be loaded here -->
         </div>
-
         <div class="page-info" id="page-indicator">Page 1 of N</div>
-
         <div class="navigation-buttons">
             <button id="prev-page">Previous Page</button>
             <button id="next-page">Next Page</button>
         </div>
-
         <div id="finish-reading-area" style="display: none;">
             <button id="done-reading">I'm Done Reading</button>
         </div>
+    </div>
+
+    <div id="questions-area" style="display: none;">
+        <h2>Question <span id="current-question-number">1</span> of <span id="total-questions">N</span></h2>
+        <div id="question-text-container">
+            <p id="question-text"></p>
+        </div>
+        <div id="options-container">
+            <!-- Radio buttons and labels for options will be generated here by JS -->
+        </div>
+        <div id="feedback" style="display: none;">
+            <p id="feedback-message"></p>
+            <div id="explanation"></div>
+            <img id="illustration" src="" alt="Illustration" style="display: none;">
+        </div>
+        <button id="submit-answer">Submit Answer</button>
+        <button id="next-question" style="display: none;">Next Question</button>
+        <button id="back-to-reading" style="margin-top: 20px;">Back to Reading Material</button>
     </div>
 
     <div id="confirmation-popup">
@@ -1082,7 +1157,7 @@ actions in the plan and observes the results. The LLM then uses the observations
 its reasoning and generate a new plan of action. This process continues until the LLM
 reaches a solution to the problem.
 
-September 2024 37 (Note: duplicate page number in source, keeping for accuracy)
+September 2024 37 
 
 Prompt Engineering
 
@@ -1195,7 +1270,7 @@ Select the instruction candidate with the highest evaluation score. This candida
 the final prompt you can use in your software application or chatbot. You can also tweak
 the select prompt and evaluate again.
 
-September 2024 A (Note: "A" instead of page number in source)
+September 2024 A
 `,
 
 // Page 11: Code Prompting (Writing, Explaining, Translating)
@@ -1245,8 +1320,9 @@ fi
 files=("$folder_name"/*)
 # Rename each file by prepending "draft" to the file name
 for file in "\${files[@]}"; do
-    new_file_name="draft_$(basename "$file")"
-    mv "$file" "$folder_name/$new_file_name" # Corrected mv destination
+    # Construct the new file name within the target folder
+    new_file_path="$folder_name/draft_$(basename "$file")"
+    mv "$file" "$new_file_path"
 done
 echo "Files renamed successfully."
 </code>
@@ -1296,8 +1372,8 @@ if [ ! -d "$folder_name" ]; then
 fi
 files=("$folder_name"/*)
 for file in "\${files[@]}"; do
-    new_file_name="draft_$(basename "$file")"
-    mv "$file" "$folder_name/$new_file_name" # Corrected mv destination
+    new_file_path="$folder_name/draft_$(basename "$file")"
+    mv "$file" "$new_file_path"
 done
 echo "Files renamed successfully."
 </code>
@@ -1322,10 +1398,11 @@ to all the files in the folder.
 4. File Renaming:
 It iterates through each file in the ‘files’ array using a ‘for’ loop.
 For each file, it generates a new file name using the ‘new_file_
-name="draft_$(basename “$file”)"’ command. This new file name is created
-by prefixing the original file name with the string “draft_”.
-It then renames the file using the ‘mv “$file” “$folder_name/$new_file_name”’ command,
-which moves the file to the new file name within the same folder.
+path="$folder_name/draft_$(basename "$file")"' command. This new file name is created
+by prefixing the original file name (without its path) with the string “draft_” and ensuring it's placed
+within the original folder.
+It then renames the file using the ‘mv “$file” “$new_file_path”’ command,
+which moves/renames the file to the new file name within the same folder.
 5. Success Message:
 After renaming all the files, it displays a success message (“Files renamed
 successfully.”) to indicate that the renaming operation was successful
@@ -1359,8 +1436,8 @@ if [ ! -d "$folder_name" ]; then
 fi
 files=("$folder_name"/*)
 for file in "\${files[@]}"; do
-    new_file_name="draft_$(basename "$file")"
-    mv "$file" "$folder_name/$new_file_name" # Corrected mv destination
+    new_file_path="$folder_name/draft_$(basename "$file")"
+    mv "$file" "$new_file_path"
 done
 echo "Files renamed successfully."
 </code>
@@ -1376,11 +1453,11 @@ if not os.path.isdir(folder_name):
 # Get a list of all files in the folder
 files = os.listdir(folder_name)
 # Iterate over the files
-for file in files:
+for file_name_only in files: # Renamed 'file' to 'file_name_only' for clarity
     # Create a new file name with the prefix "draft_"
-    old_file_path = os.path.join(folder_name, file)
-    new_file_name = f"draft_{file}"
-    new_file_path = os.path.join(folder_name, new_file_name)
+    old_file_path = os.path.join(folder_name, file_name_only)
+    new_renamed_file_name_only = f"draft_{file_name_only}"
+    new_file_path = os.path.join(folder_name, new_renamed_file_name_only)
     # Move the file to the new name
     shutil.move(old_file_path, new_file_path)
 # Print a success message
@@ -1419,10 +1496,10 @@ if not os.path.isdir(folder_name) :
     print("Folder does not exist.")
     exit(1)
 files = os.listdir(folder_name)
-for file in files:
-    new_filename = f"{text}_{file}" # Variable name was new_file_name
-    old_path = os.path.join(folder_name, file)
-    new_path = os.path.join(folder_name, new_filename) # Corrected to new_filename
+for file_name_only in files: # Using consistent variable name
+    new_filename_with_prefix = f"{text}_{file_name_only}" # Variable name was new_file_name
+    old_path = os.path.join(folder_name, file_name_only)
+    new_path = os.path.join(folder_name, new_filename_with_prefix) # Corrected to new_filename_with_prefix
     shutil.move(old_path, new_path)
 print("Files renamed successfully.")
 Snippet 3. A broken Python script
@@ -1433,7 +1510,7 @@ Unset
 The below Python code gives an error:
 Traceback (most recent call last):
 File “/Users/leeboonstra/Documents/test_folder/rename_files.py”, line 7,
-in <module>
+in &lt;module&gt;
 text = toUpperCase(prefix)
 NameError: name ‘toUpperCase’ is not defined
 Snippet 4. I broke the Python code
@@ -1452,7 +1529,7 @@ Temperature 0.1 Token Limit 1024
 Top-K N/A Top-P 1
 Prompt The below Python code gives an error:
 Traceback (most recent call last):
-File "/Users/leeboonstra/Documents/test_folder/rename_files.py", line 7, in <module>
+File "/Users/leeboonstra/Documents/test_folder/rename_files.py", line 7, in &lt;module&gt;
 text = toUpperCase(prefix)
 NameError: name ‘toUpperCase’ is not defined
 Debug what's wrong and explain how I can improve the code.
@@ -1462,7 +1539,7 @@ import shutil
 # Get the folder name from the user
 folder_name = input("Enter the folder name: ")
 prefix = input("Enter the string to prepend to the filename: ")
-text = toUpperCase(prefix)
+text = toUpperCase(prefix) # Error is here
 # Check if the folder exists
 if not os.path.isdir(folder_name):
     print("Folder does not exist.")
@@ -1470,12 +1547,12 @@ if not os.path.isdir(folder_name):
 # Get a list of all files in the folder
 files = os.listdir(folder_name)
 # Iterate over the files
-for file in files:
+for file_name_only in files:
     # Create a new file name with the prefix
-    new_filename = f"{text}_{file}" # Variable name was new_file_name
+    new_filename_with_prefix = f"{text}_{file_name_only}"
     # Move the file to the new name
-    shutil.move(os.path.join(folder_name, file),
-                os.path.join(folder_name, new_filename)) # Corrected here
+    shutil.move(os.path.join(folder_name, file_name_only),
+                os.path.join(folder_name, new_filename_with_prefix))
 # Print a success message
 print("Files renamed successfully.")
 </code>
@@ -1502,12 +1579,12 @@ if not os.path.isdir(folder_name):
 # Get a list of all files in the folder
 files = os.listdir(folder_name)
 # Iterate over the files
-for file in files:
+for file_name_only in files:
     # Create a new file name with the prefix
-    new_filename = f"{text}_{file}"
+    new_filename_with_prefix = f"{text}_{file_name_only}"
     # Move the file to the new name
-    shutil.move(os.path.join(folder_name, file),
-                os.path.join(folder_name, new_filename))
+    shutil.move(os.path.join(folder_name, file_name_only),
+                os.path.join(folder_name, new_filename_with_prefix))
 # Print a success message
 print("Files renamed successfully.")
 </code>
@@ -1534,27 +1611,27 @@ import os
 import shutil
 # Get the folder name from the user
 folder_name = input("Enter the folder name: ")
-prefix = input("Enter the string to prepend to the filename: ")
+prefix_to_add = input("Enter the string to prepend to the filename: ") # Renamed for clarity
 # Check if the folder exists
 if not os.path.isdir(folder_name):
     print("Folder does not exist.")
     exit(1)
 # Get a list of all files in the folder
-files = os.listdir(folder_name)
+files_in_dir = os.listdir(folder_name) # Renamed for clarity
 # Iterate over the files
-for file in files:
+for current_file_name in files_in_dir: # Renamed for clarity
     # Get the file extension
-    name_part, ext = os.path.splitext(file)
+    name_part, ext = os.path.splitext(current_file_name)
     # Create a new file name with the prefix and the file extension
-    new_filename = f"{prefix.upper()}_{name_part}{ext}" # Applied .upper() here
+    new_file_name = f"{prefix_to_add.upper()}_{name_part}{ext}" # Applied .upper() here
     # Build the full paths for the original and new files
-    old_path = os.path.join(folder_name, file)
-    new_path = os.path.join(folder_name, new_filename)
+    old_path = os.path.join(folder_name, current_file_name)
+    new_path = os.path.join(folder_name, new_file_name)
     # Try to move the file
     try:
         shutil.move(old_path, new_path)
     except Exception as e:
-        print(f"An error occurred while moving the file {file}: {e}")
+        print(f"An error occurred while moving the file {current_file_name}: {e}")
 # Print a success message
 print("Files renamed successfully.")
 </code>
@@ -1857,6 +1934,7 @@ September 2024 64`
 
         let currentPageIndex = 0;
 
+        // DOM Elements for Reading Part
         const textDisplay = document.getElementById('text-container');
         const prevButton = document.getElementById('prev-page');
         const nextButton = document.getElementById('next-page');
@@ -1866,7 +1944,90 @@ September 2024 64`
         const proceedButton = document.getElementById('proceed-to-questions');
         const stayButton = document.getElementById('stay-on-page');
         const pageIndicator = document.getElementById('page-indicator');
+        const readingArea = document.getElementById('reading-app-container');
 
+
+        // --- Questions Part ---
+        const allQuestions = [
+            {
+                question: "According to the Introduction, what is a text prompt in the context of a large language model?",
+                options: [
+                    { text: "It's the final output generated by the model.", value: "A" },
+                    { text: "It's the input the model uses to predict a specific output.", value: "B" },
+                    { text: "It's a configuration setting like temperature.", value: "C" },
+                    { text: "It's the training data for the model.", value: "D" }
+                ],
+                correctAnswer: "B",
+                explanation: "The text states: 'a text prompt... is the input the model uses to predict a specific output.'",
+                // illustration: "path/to/illustration1.png" // Optional
+            },
+            {
+                question: "Which LLM output configuration setting directly controls the degree of randomness in token selection?",
+                options: [
+                    { text: "Top-K", value: "A" },
+                    { text: "Output length", value: "B" },
+                    { text: "Temperature", value: "C" },
+                    { text: "Top-P", value: "D" }
+                ],
+                correctAnswer: "C",
+                explanation: "The section on 'Temperature' says: 'Temperature controls the degree of randomness in token selection.'",
+            },
+            {
+                question: "What is 'zero-shot' prompting?",
+                options: [
+                    { text: "Providing many examples to the model.", value: "A" },
+                    { text: "Providing a single example to the model.", value: "B" },
+                    { text: "Providing only a task description and some starting text, with no examples.", value: "C" },
+                    { text: "A technique that always results in zero errors.", value: "D" }
+                ],
+                correctAnswer: "C",
+                explanation: "The text defines a zero-shot prompt as: 'It only provides a description of a task and some text for the LLM to get started with. The name zero-shot stands for ‘no examples’.'"
+            },
+            {
+                question: "What is the main purpose of 'Role Prompting'?",
+                options: [
+                    { text: "To set the overall context and purpose for the language model.", value: "A" },
+                    { text: "To provide specific details or background information relevant to the current task.", value: "B" },
+                    { text: "To assign a specific character or identity for the language model to adopt.", value: "C" },
+                    { text: "To control the maximum number of tokens in the output.", value: "D" }
+                ],
+                correctAnswer: "C",
+                explanation: "Role prompting 'assigns a specific character or identity for the language model to adopt. This helps the model generate responses that are consistent with the assigned role...'"
+            },
+            {
+                question: "Which prompting technique involves the LLM generating intermediate reasoning steps to improve accuracy?",
+                options: [
+                    { text: "Step-back prompting", value: "A" },
+                    { text: "Chain of Thought (CoT) prompting", value: "B" },
+                    { text: "Self-consistency", value: "C" },
+                    { text: "ReAct prompting", value: "D" }
+                ],
+                correctAnswer: "B",
+                explanation: "Chain of Thought (CoT) prompting is described as 'a technique for improving the reasoning capabilities of LLMs by generating intermediate reasoning steps.'"
+            }
+            // Add up to 20 more questions here...
+        ];
+
+        // DOM Elements for Questions Part
+        const questionsArea = document.getElementById('questions-area');
+        const questionTextElement = document.getElementById('question-text');
+        const optionsContainer = document.getElementById('options-container');
+        const submitAnswerButton = document.getElementById('submit-answer');
+        const nextQuestionButton = document.getElementById('next-question');
+        const feedbackDiv = document.getElementById('feedback');
+        const feedbackMessage = document.getElementById('feedback-message');
+        const explanationDiv = document.getElementById('explanation');
+        const illustrationImg = document.getElementById('illustration');
+        const currentQuestionNumberSpan = document.getElementById('current-question-number');
+        const totalQuestionsSpan = document.getElementById('total-questions');
+        const backToReadingButton = document.getElementById('back-to-reading');
+
+        // Quiz state variables
+        let shuffledQuestionIndices = [];
+        let currentQuestionIndexInShuffledList = 0;
+
+
+        // --- Reading Part Functions ---
         function displayPage() {
             if (pages.length === 0) {
                 textDisplay.innerHTML = "<p>No content available.</p>";
@@ -1876,16 +2037,172 @@ September 2024 64`
                 pageIndicator.textContent = "Page 0 of 0";
                 return;
             }
-
             textDisplay.innerHTML = pages[currentPageIndex];
             pageIndicator.textContent = `Page ${currentPageIndex + 1} of ${pages.length}`;
-            window.scrollTo(0, 0); // Scroll to top of page content
+            window.scrollTo(0, 0);
 
             prevButton.disabled = currentPageIndex === 0;
             nextButton.style.display = currentPageIndex === pages.length - 1 ? 'none' : 'inline-block';
             doneReadingButtonContainer.style.display = currentPageIndex === pages.length - 1 ? 'block' : 'none';
         }
 
+        // --- Quiz Functions ---
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+
+        function startQuiz() {
+            confirmationPopup.style.display = 'none'; // Hide confirmation popup
+
+            if (allQuestions.length === 0) {
+                readingArea.style.display = 'none';
+                doneReadingButtonContainer.style.display = 'none';
+                questionsArea.style.display = 'block';
+                questionsArea.innerHTML = `<h2>No questions available at this time.</h2>
+                                           <button id="backToReadingNoQuestions">Back to Reading Material</button>`;
+                document.getElementById('backToReadingNoQuestions').addEventListener('click', backToReading);
+                return;
+            }
+
+            readingArea.style.display = 'none';
+            doneReadingButtonContainer.style.display = 'none';
+            questionsArea.style.display = 'block';
+
+            shuffledQuestionIndices = Array.from({ length: allQuestions.length }, (_, i) => i);
+            shuffleArray(shuffledQuestionIndices);
+            currentQuestionIndexInShuffledList = 0;
+
+            totalQuestionsSpan.textContent = allQuestions.length;
+            displaySingleQuestion();
+        }
+
+        function displaySingleQuestion() {
+            const currentQuestionDataIndex = shuffledQuestionIndices[currentQuestionIndexInShuffledList];
+            const currentQuestion = allQuestions[currentQuestionDataIndex];
+
+            currentQuestionNumberSpan.textContent = currentQuestionIndexInShuffledList + 1;
+            questionTextElement.textContent = currentQuestion.question;
+
+            optionsContainer.innerHTML = '';
+            feedbackDiv.style.display = 'none';
+            feedbackMessage.textContent = '';
+            explanationDiv.innerHTML = '';
+            illustrationImg.style.display = 'none';
+            illustrationImg.src = '';
+
+
+            currentQuestion.options.forEach(option => {
+                const optionId = `option-${option.value}`;
+                const label = document.createElement('label');
+                label.setAttribute('for', optionId);
+                
+                const radio = document.createElement('input');
+                radio.type = 'radio';
+                radio.id = optionId;
+                radio.name = 'answer';
+                radio.value = option.value;
+                
+                label.appendChild(radio); // Radio inside label for better clickability
+                label.appendChild(document.createTextNode(` ${option.text}`)); // Text node after radio
+
+                optionsContainer.appendChild(label);
+            });
+
+            submitAnswerButton.style.display = 'inline-block';
+            nextQuestionButton.style.display = 'none';
+            optionsContainer.querySelectorAll('input[type="radio"]').forEach(radio => radio.disabled = false);
+            optionsContainer.querySelectorAll('label').forEach(label => {
+                label.classList.remove('correct-answer', 'wrong-answer');
+            });
+        }
+
+        function handleSubmitAnswer() {
+            const selectedOptionInput = document.querySelector('input[name="answer"]:checked');
+
+            if (!selectedOptionInput) {
+                alert("Please select an answer.");
+                return;
+            }
+
+            const userAnswer = selectedOptionInput.value;
+            const currentQuestionDataIndex = shuffledQuestionIndices[currentQuestionIndexInShuffledList];
+            const currentQuestion = allQuestions[currentQuestionDataIndex];
+            const correctAnswerValue = currentQuestion.correctAnswer;
+
+            optionsContainer.querySelectorAll('input[type="radio"]').forEach(radio => radio.disabled = true);
+
+            const correctLabel = optionsContainer.querySelector(`label[for="option-${correctAnswerValue}"]`);
+            if (correctLabel) {
+                correctLabel.classList.add('correct-answer');
+            }
+
+            if (userAnswer === correctAnswerValue) {
+                feedbackMessage.textContent = "Correct!";
+                feedbackMessage.style.color = 'green';
+                explanationDiv.innerHTML = currentQuestion.explanation ? `<p>${currentQuestion.explanation}</p>` : '';
+            } else {
+                feedbackMessage.textContent = "Wrong!";
+                feedbackMessage.style.color = 'red';
+                explanationDiv.innerHTML = `<p>The correct answer was ${correctAnswerValue}.</p>${currentQuestion.explanation ? `<p>${currentQuestion.explanation}</p>` : ''}`;
+                
+                const selectedLabel = selectedOptionInput.closest('label'); // Get the label associated with the selected input
+                if (selectedLabel) {
+                    selectedLabel.classList.add('wrong-answer');
+                }
+            }
+            
+            if (currentQuestion.illustration) {
+                illustrationImg.src = currentQuestion.illustration;
+                illustrationImg.style.display = 'block';
+            } else {
+                illustrationImg.style.display = 'none';
+            }
+
+
+            feedbackDiv.style.display = 'block';
+            submitAnswerButton.style.display = 'none';
+            nextQuestionButton.style.display = 'inline-block';
+        }
+
+        function handleNextQuestion() {
+            currentQuestionIndexInShuffledList++;
+            if (currentQuestionIndexInShuffledList < allQuestions.length) {
+                displaySingleQuestion();
+            } else {
+                questionTextElement.textContent = "Quiz Finished!";
+                optionsContainer.innerHTML = `<p>You have completed all ${allQuestions.length} questions.</p><p>You can now go back to the reading material if you wish.</p>`;
+                submitAnswerButton.style.display = 'none';
+                nextQuestionButton.style.display = 'none';
+                feedbackDiv.style.display = 'none';
+                currentQuestionNumberSpan.textContent = allQuestions.length; // Show total as current
+                // backToReadingButton remains visible
+            }
+        }
+
+        function backToReading() {
+            questionsArea.style.display = 'none';
+            readingArea.style.display = 'block';
+            
+            // Reset quiz state (optional, if you want a full reset on going back)
+            // currentQuestionIndexInShuffledList = 0;
+            // shuffledQuestionIndices = [];
+
+            // Show reading part UI elements
+            currentPageIndex = 0;
+            displayPage(); // This will also handle doneReadingButtonContainer visibility
+
+            // If quiz UI was modified for "No questions", restore it (simple way is to ensure displaySingleQuestion is called if quiz restarts)
+            // For this version, we just hide questionsArea. If startQuiz is called again, it will rebuild.
+        }
+
+
+        // --- Event Listeners ---
+
+        // Reading Part Listeners
         prevButton.addEventListener('click', () => {
             if (currentPageIndex > 0) {
                 currentPageIndex--;
@@ -1903,20 +2220,21 @@ September 2024 64`
         doneReadingButton.addEventListener('click', () => {
             confirmationPopup.style.display = 'block';
         });
-        
-        proceedButton.addEventListener('click', () => {
-            alert('Proceeding to questions (Not implemented in Part 1).');
-            confirmationPopup.style.display = 'none';
-            // In a full application, you might redirect or load the questions UI here.
-            // e.g., window.location.href = 'questions.html'; 
-        });
+
+        proceedButton.addEventListener('click', startQuiz);
 
         stayButton.addEventListener('click', () => {
             confirmationPopup.style.display = 'none';
         });
 
-        // Initial page load
+        // Questions Part Listeners
+        submitAnswerButton.addEventListener('click', handleSubmitAnswer);
+        nextQuestionButton.addEventListener('click', handleNextQuestion);
+        backToReadingButton.addEventListener('click', backToReading);
+
+        // Initial page load for reading material
         displayPage();
+
     </script>
 </body>
 </html>
