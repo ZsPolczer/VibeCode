@@ -6,165 +6,223 @@ html
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Reading Comprehension Test</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            line-height: 1.6;
-            margin: 0 auto;
-            padding: 20px;
-            max-width: 800px;
-            background-color: #f4f4f4;
-            color: #333;
+        /* ----- General Enhancements ----- */
+/* Modify body style */
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    line-height: 1.7;
+    margin: 0; /* Remove auto margin here if using flex to center children */
+    padding: 20px;
+    /* max-width: 850px; <-- Keep this if you want the overall page to have a max-width */
+    background-color: #e9ecef;
+    color: #495057;
+    display: flex;
+    flex-direction: column;
+    align-items: center; /* This will center flex items (our containers) */
+    min-height: 100vh; /* Ensure body takes full viewport height */
+}
+
+#reading-app-container, #questions-area {
+    background-color: #ffffff;
+    padding: 25px 30px;
+    border-radius: 12px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+    margin-bottom: 25px;
+    width: 100%; /* Take full width of parent */
+    max-width: 850px; /* Apply max-width to containers instead of body for this flex setup */
+    /* margin-left: auto;  <-- Not needed if body is flex centering */
+    /* margin-right: auto; <-- Not needed if body is flex centering */
+}
+
+        h1 {
+            color: #343a40;
+            margin-bottom: 25px;
+            font-size: 2.2em;
         }
-        #reading-app-container, #questions-area {
-            background-color: #fff;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        h2 {
+            color: #007bff; /* Make question headers stand out */
             margin-bottom: 20px;
+            font-size: 1.8em;
         }
-        h1, h2 {
-            text-align: center;
-            color: #333;
-        }
-        #text-container {
-            border: 1px solid #ddd;
-            padding: 15px;
-            margin-bottom: 20px;
-            min-height: 300px;
-            background-color: #fff;
-            border-radius: 5px;
-            white-space: pre-wrap;
-            overflow-y: auto;
-        }
-        .navigation-buttons, #finish-reading-area {
-            margin-top: 20px;
-            text-align: center;
-        }
+
         button {
-            padding: 10px 20px;
-            margin: 5px;
+            padding: 12px 25px; /* Larger buttons */
+            margin: 8px;
             cursor: pointer;
             background-color: #007bff;
             color: white;
             border: none;
-            border-radius: 5px;
-            font-size: 16px;
+            border-radius: 8px; /* More rounded buttons */
+            font-size: 1em; /* Relative font size */
+            font-weight: 500;
+            transition: background-color 0.2s ease-in-out, transform 0.1s ease; /* Smooth transitions */
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
         button:hover {
             background-color: #0056b3;
+            transform: translateY(-1px); /* Slight lift on hover */
+        }
+        button:active {
+            transform: translateY(0px); /* Press down effect */
         }
         button:disabled {
-            background-color: #ccc;
+            background-color: #adb5bd; /* Clearer disabled state */
             cursor: not-allowed;
-        }
-        #prev-page {
-            background-color: #6c757d;
-        }
-        #prev-page:hover {
-            background-color: #545b62;
-        }
-        #confirmation-popup {
-            display: none;
-            position: fixed;
-            left: 50%;
-            top: 50%;
-            transform: translate(-50%, -50%);
-            padding: 30px;
-            background: white;
-            border: 1px solid #ccc;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-            z-index: 1000;
-            border-radius: 8px;
-            text-align: center;
-        }
-        #confirmation-popup p {
-            margin-top: 0;
-            margin-bottom: 20px;
-            font-size: 18px;
-        }
-        pre {
-            background-color: #f8f9fa;
-            padding: 15px;
-            border-radius: 5px;
-            overflow-x: auto;
-            border: 1px solid #eee;
-            font-family: "Courier New", Courier, monospace;
-            font-size: 0.9em;
-            white-space: pre-wrap;
-            word-break: break-all;
-        }
-        .page-info {
-            text-align: center;
-            margin-bottom: 10px;
-            font-style: italic;
-            color: #555;
+            box-shadow: none;
+            transform: none;
         }
 
-        /* Styles for Question Area */
-        #question-text-container {
-            margin-bottom: 20px;
-            padding: 15px;
-            border: 1px solid #eee;
-            border-radius: 5px;
-            background-color: #f8f9fa;
+        #prev-page, #stay-on-page {
+            background-color: #6c757d;
         }
+        #prev-page:hover, #stay-on-page:hover {
+            background-color: #545b62;
+        }
+        #proceed-to-questions {
+            background-color: #28a745; /* Green for "proceed" */
+        }
+        #proceed-to-questions:hover {
+            background-color: #1e7e34;
+        }
+
+
+        /* ----- Reading Area Specifics ----- */
+        #text-container {
+            border: 1px solid #dee2e6;
+            padding: 20px;
+            background-color: #f8f9fa; /* Slightly off-white for text background */
+        }
+        .page-info {
+            color: #6c757d;
+            font-size: 0.9em;
+        }
+
+        /* ----- Questions Area Specifics ----- */
+        #question-text-container {
+            margin-bottom: 25px;
+            padding: 20px;
+            border: 1px solid #ced4da;
+            border-left: 5px solid #007bff; /* Accent border */
+            background-color: #f8f9fa;
+            border-radius: 8px;
+        }
+        #question-text {
+            font-size: 1.15em; /* Larger question text */
+            color: #343a40;
+        }
+
         #options-container label {
-            display: block;
-            margin-bottom: 10px;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
+            display: flex; /* For better alignment of radio and text */
+            align-items: center;
+            margin-bottom: 12px;
+            padding: 15px; /* More padding in options */
+            border: 1px solid #ced4da;
+            border-radius: 8px;
             cursor: pointer;
-            transition: background-color 0.2s ease;
+            transition: background-color 0.2s ease, border-color 0.2s ease;
+            background-color: #fff;
         }
         #options-container label:hover {
-            background-color: #f0f0f0;
+            background-color: #f1f3f5;
+            border-color: #007bff;
         }
         #options-container input[type="radio"] {
-            margin-right: 10px;
-            vertical-align: middle;
+            margin-right: 12px;
+            flex-shrink: 0; /* Prevent radio from shrinking */
+            /* Custom radio button appearance (optional advanced) */
+            appearance: none;
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #adb5bd;
+            border-radius: 50%;
+            outline: none;
+            cursor: pointer;
+            transition: border-color 0.2s ease;
+            position: relative; /* For the dot */
         }
-        #submit-answer, #next-question, #back-to-reading {
-            margin-top: 15px;
+        #options-container input[type="radio"]:checked {
+            border-color: #007bff;
         }
+        #options-container input[type="radio"]:checked::before {
+            content: '';
+            display: block;
+            width: 10px;
+            height: 10px;
+            background-color: #007bff;
+            border-radius: 50%;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+
         #feedback {
-            margin-top: 20px;
-            padding: 15px;
-            border-radius: 5px;
+            margin-top: 25px;
+            padding: 20px;
+            border-radius: 8px;
+            border-left-width: 5px;
+            border-left-style: solid;
         }
+        .correct-answer-feedback { /* For the feedback div */
+            background-color: #d1e7dd;
+            border-color: #28a745; /* Green border for correct feedback div */
+        }
+        .wrong-answer-feedback { /* For the feedback div */
+            background-color: #dc3545;
+            border-color: #dc3545; /* Red border for wrong feedback div */
+        }
+
         #feedback-message {
-            font-weight: bold;
-            margin-top: 0;
+            font-weight: 600; /* Bolder message */
+            font-size: 1.1em;
+            margin-bottom: 8px;
         }
         #explanation {
-            margin-top: 10px;
-            font-size: 0.95em;
-            color: #555;
+            font-size: 1em;
+            color: #495057;
         }
-        .correct-answer {
-            background-color: #d4edda !important;
-            border-color: #c3e6cb !important;
-            color: #155724 !important;
-            font-weight: bold;
+        .correct-answer { /* Label highlighting */
+            background-color: #d1e7dd !important;
+            border-color: #28a745 !important;
+            color: #0f5132 !important;
         }
-        .wrong-answer {
+        .wrong-answer { /* Label highlighting */
             background-color: #f8d7da !important;
-            border-color: #f5c6cb !important;
+            border-color: #dc3545 !important;
             color: #721c24 !important;
         }
-        #illustration {
-            max-width: 100%;
-            height: auto;
-            margin-top: 10px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
+
+        #quiz-summary {
+            padding: 20px;
+            border: 1px solid #ced4da;
+            border-radius: 8px;
+            background-color: #f8f9fa;
+        }
+        #quiz-summary h2 {
+            color: #007bff;
         }
         #quiz-summary p {
             font-size: 1.1em;
-            margin-bottom: 10px;
+            line-height: 1.6;
         }
-        #quiz-summary h2 {
-             margin-bottom: 15px;
+
+        /* ----- Animations for Question Transition ----- */
+        .question-transition-out {
+            animation: fadeOut 0.3s forwards;
+        }
+        .question-transition-in {
+            animation: fadeIn 0.4s forwards 0.1s; /* Slight delay for smoother feel */
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes fadeOut {
+            from { opacity: 1; transform: translateY(0); }
+            to { opacity: 0; transform: translateY(-20px); }
         }
     </style>
 </head>
@@ -1948,228 +2006,228 @@ September 2024 64`
 
         // --- Questions Part ---
         const allQuestions = [
-            {
-                question: "According to the Introduction, what is a text prompt in the context of a large language model?",
-                options: [
-                    { text: "It's the final output generated by the model.", value: "A" },
-                    { text: "It's the input the model uses to predict a specific output.", value: "B" },
-                    { text: "It's a configuration setting like temperature.", value: "C" },
-                    { text: "It's the training data for the model.", value: "D" }
-                ],
-                correctAnswer: "B",
-                explanation: "The text states: 'a text prompt... is the input the model uses to predict a specific output.'"
-            },
-            {
-                question: "Which LLM output configuration setting directly controls the degree of randomness in token selection?",
-                options: [
-                    { text: "Top-K", value: "A" },
-                    { text: "Output length", value: "B" },
-                    { text: "Temperature", value: "C" },
-                    { text: "Top-P", value: "D" }
-                ],
-                correctAnswer: "C",
-                explanation: "The section on 'Temperature' says: 'Temperature controls the degree of randomness in token selection.'"
-            },
-            {
-                question: "What is 'zero-shot' prompting?",
-                options: [
-                    { text: "Providing many examples to the model.", value: "A" },
-                    { text: "Providing a single example to the model.", value: "B" },
-                    { text: "Providing only a task description and some starting text, with no examples.", value: "C" },
-                    { text: "A technique that always results in zero errors.", value: "D" }
-                ],
-                correctAnswer: "C",
-                explanation: "The text defines a zero-shot prompt as: 'It only provides a description of a task and some text for the LLM to get started with. The name zero-shot stands for ‘no examples’.'"
-            },
-            {
-                question: "What is the main purpose of 'Role Prompting'?",
-                options: [
-                    { text: "To set the overall context and purpose for the language model.", value: "A" },
-                    { text: "To provide specific details or background information relevant to the current task.", value: "B" },
-                    { text: "To assign a specific character or identity for the language model to adopt.", value: "C" },
-                    { text: "To control the maximum number of tokens in the output.", value: "D" }
-                ],
-                correctAnswer: "C",
-                explanation: "Role prompting 'assigns a specific character or identity for the language model to adopt. This helps the model generate responses that are consistent with the assigned role...'"
-            },
-            {
-                question: "Which prompting technique involves the LLM generating intermediate reasoning steps to improve accuracy?",
-                options: [
-                    { text: "Step-back prompting", value: "A" },
-                    { text: "Chain of Thought (CoT) prompting", value: "B" },
-                    { text: "Self-consistency", value: "C" },
-                    { text: "ReAct prompting", value: "D" }
-                ],
-                correctAnswer: "B",
-                explanation: "Chain of Thought (CoT) prompting is described as 'a technique for improving the reasoning capabilities of LLMs by generating intermediate reasoning steps.'"
-            },
-            {
-                question: "What does 'Top-P' sampling control in LLM output configuration?",
-                options: [
-                    { text: "The maximum number of tokens in the response.", value: "A" },
-                    { text: "The selection of the top K most likely tokens.", value: "B" },
-                    { text: "The selection of top tokens whose cumulative probability does not exceed a certain value (P).", value: "C" },
-                    { text: "The temperature of the model's output.", value: "D" }
-                ],
-                correctAnswer: "C",
-                explanation: "Top-P sampling 'selects the top tokens whose cumulative probability does not exceed a certain value (P).'"
-            },
-            {
-                question: "What is a primary benefit of 'System Prompting' when requesting JSON output?",
-                options: [
-                    { text: "It makes the output more creative.", value: "A" },
-                    { text: "It forces the model to create a structure and can limit hallucinations.", value: "B" },
-                    { text: "It significantly reduces the computational cost.", value: "C" },
-                    { text: "It automatically translates the output to multiple languages.", value: "D" }
-                ],
-                correctAnswer: "B",
-                explanation: "The text states: 'by prompting for a JSON format it forces the model to create a structure and limit hallucinations.'"
-            },
-            {
-                question: "What is 'Step-back' prompting designed to do?",
-                options: [
-                    { text: "Make the LLM answer questions more quickly.", value: "A" },
-                    { text: "Have the LLM consider a general question first to activate relevant background knowledge.", value: "B" },
-                    { text: "Force the LLM to only use its most recent training data.", value: "C" },
-                    { text: "Reduce the number of examples needed for few-shot prompting.", value: "D" }
-                ],
-                correctAnswer: "B",
-                explanation: "Step-back prompting involves 'prompting the LLM to first consider a general question related to the specific task at hand... This ‘step back’ allows the LLM to activate relevant background knowledge...'"
-            },
-            {
-                question: "According to the 'Self-consistency' section, what does this technique combine to improve LLM reasoning?",
-                options: [
-                    { text: "Greedy decoding and temperature control.", value: "A" },
-                    { text: "Sampling and majority voting.", value: "B" },
-                    { text: "Zero-shot prompting and role prompting.", value: "C" },
-                    { text: "Output length restriction and ReAct.", value: "D" }
-                ],
-                correctAnswer: "B",
-                explanation: "Self-consistency 'combines sampling and majority voting to generate diverse reasoning paths and select the most consistent answer.'"
-            },
-            {
-                question: "What does ReAct prompting enable LLMs to do?",
-                options: [
-                    { text: "Only reason about a problem without taking action.", value: "A" },
-                    { text: "Solve complex tasks using natural language reasoning combined with external tools.", value: "B" },
-                    { text: "Automatically generate new prompts.", value: "C" },
-                    { text: "Strictly follow a single linear chain of thought.", value: "D" }
-                ],
-                correctAnswer: "B",
-                explanation: "ReAct prompting is 'a paradigm for enabling LLMs to solve complex tasks using natural language reasoning combined with external tools (search, code interpreter etc.)'"
-            },
-            {
-                question: "What is the core idea behind Automatic Prompt Engineering (APE)?",
-                options: [
-                    { text: "Manually crafting each prompt for maximum efficiency.", value: "A" },
-                    { text: "Using an LLM to generate more prompts, which are then evaluated.", value: "B" },
-                    { text: "Disabling all automatic features of the LLM.", value: "C" },
-                    { text: "Focusing solely on code generation prompts.", value: "D" }
-                ],
-                correctAnswer: "B",
-                explanation: "With APE, 'You will prompt a model to generate more prompts. Evaluate them, possibly alter the good ones. And repeat.'"
-            },
-            {
-                question: "When using Gemini for code generation, what is a key recommendation if you are concerned about confidentiality?",
-                options: [
-                    { text: "Only use the public consumer chatbot Gemini.", value: "A" },
-                    { text: "Write prompts within your Google Cloud account using Vertex AI Studio.", value: "B" },
-                    { text: "Avoid code generation tasks altogether.", value: "C" },
-                    { text: "Set the temperature to maximum.", value: "D" }
-                ],
-                correctAnswer: "B",
-                explanation: "The text suggests: 'if you are more concerned about confidentiality, you can write these prompts within your Google Cloud account and open Vertex AI Studio.'"
-            },
-            {
-                question: "What is one of the MOST important best practices in prompt engineering, according to the text?",
-                options: [
-                    { text: "Always using the shortest possible prompts.", value: "A" },
-                    { text: "Providing (one-shot / few-shot) examples within a prompt.", value: "B" },
-                    { text: "Setting the temperature to 0 for all tasks.", value: "C" },
-                    { text: "Avoiding the use of variables in prompts.", value: "D" }
-                ],
-                correctAnswer: "B",
-                explanation: "The text states: 'The most important best practice is to provide (one shot / few shot) examples within a prompt.'"
-            },
-            {
-                question: "When designing prompts, what does 'Design with simplicity' primarily mean?",
-                options: [
-                    { text: "Using highly technical jargon to be precise.", value: "A" },
-                    { text: "Making prompts concise, clear, and easy to understand.", value: "B" },
-                    { text: "Including as much information as possible, even if irrelevant.", value: "C" },
-                    { text: "Only using single-word prompts.", value: "D" }
-                ],
-                correctAnswer: "B",
-                explanation: "'Prompts should be concise, clear, and easy to understand for both you and the model.'"
-            },
-            {
-                question: "Why is it generally better to use positive instructions over constraints in prompts?",
-                options: [
-                    { text: "Constraints make the LLM more creative.", value: "A" },
-                    { text: "Positive instructions directly communicate the desired outcome, while constraints might leave the model guessing.", value: "B" },
-                    { text: "Constraints are never useful in prompting.", value: "C" },
-                    { text: "Positive instructions always lead to shorter LLM responses.", value: "D" }
-                ],
-                correctAnswer: "B",
-                explanation: "The text mentions: 'Instructions directly communicate the desired outcome, whereas constraints might leave the model guessing about what is allowed.'"
-            },
-            {
-                question: "For few-shot prompting with classification tasks, what is recommended regarding the order of examples?",
-                options: [
-                    { text: "Always present examples of the same class consecutively.", value: "A" },
-                    { text: "The order does not matter at all.", value: "B" },
-                    { text: "Mix up the possible response classes in the few-shot examples.", value: "C" },
-                    { text: "Only use examples from the most common class.", value: "D" }
-                ],
-                correctAnswer: "C",
-                explanation: "'...when doing classification tasks, make sure you mix up the possible response classes in the few shot examples.'"
-            },
-            {
-                question: "What is a key recommendation for CoT (Chain of Thought) prompting regarding temperature setting?",
-                options: [
-                    { text: "Set the temperature to a high value for creativity.", value: "A" },
-                    { text: "Set the temperature to 0 (greedy decoding).", value: "B" },
-                    { text: "Temperature setting is irrelevant for CoT.", value: "C" },
-                    { text: "Alternate between high and low temperatures.", value: "D" }
-                ],
-                correctAnswer: "B",
-                explanation: "'For Col prompting, set the temperature to O.' This is because CoT is based on greedy decoding and usually aims for a single correct reasoning path."
-            },
-            {
-                question: "What is the primary reason for documenting prompt attempts in detail?",
-                options: [
-                    { text: "To make the prompt engineering process slower.", value: "A" },
-                    { text: "To have a record for revisiting work, testing on different model versions, and debugging.", value: "B" },
-                    { text: "To share prompts publicly without context.", value: "C" },
-                    { text: "It's a requirement only for code-related prompts.", value: "D" }
-                ],
-                correctAnswer: "B",
-                explanation: "Documentation helps to 'have a complete record when you inevitably have to revisit your prompting work... to test prompt performance on different versions of a model, and to help debug future errors.'"
-            },
-            {
-                question: "What does 'Tree of Thoughts (ToT)' generalize from CoT prompting?",
-                options: [
-                    { text: "It forces a single, linear path of reasoning.", value: "A" },
-                    { text: "It allows LLMs to explore multiple different reasoning paths simultaneously.", value: "B" },
-                    { text: "It eliminates the need for any intermediate steps.", value: "C" },
-                    { text: "It is only applicable to text summarization tasks.", value: "D" }
-                ],
-                correctAnswer: "B",
-                explanation: "ToT 'generalizes the concept of CoT prompting because it allows LLMs to explore multiple different reasoning paths simultaneously...'"
-            },
-            {
-                question: "What is a disadvantage of using Chain of Thought (CoT) prompting mentioned in the text?",
-                options:
+    {
+        question: "According to the Introduction, what is a text prompt in the context of a large language model?",
+        options: [
+            { text: "It's the final output generated by the model.", value: "A" },
+            { text: "It's the input the model uses to predict a specific output.", value: "B" },
+            { text: "It's a configuration setting like temperature.", value: "C" },
+            { text: "It's the training data for the model.", value: "D" }
+        ],
+        correctAnswer: "B",
+        explanation: "Think of a prompt as your instruction or starting point for the AI. The introduction clarifies that a text prompt is essentially the input you give the model so it knows what kind of output you're looking for."
+    },
+    {
+        question: "Which LLM output configuration setting directly controls the degree of randomness in token selection?",
+        options: [
+            { text: "Top-K", value: "A" },
+            { text: "Output length", value: "B" },
+            { text: "Temperature", value: "C" },
+            { text: "Top-P", value: "D" }
+        ],
+        correctAnswer: "C",
+        explanation: "Temperature is the key here! As the material explains, adjusting the temperature setting allows you to influence how creative (random) or deterministic (predictable) the model's response will be when it's picking the next words."
+    },
+    {
+        question: "What is 'zero-shot' prompting?",
+        options: [
+            { text: "Providing many examples to the model.", value: "A" },
+            { text: "Providing a single example to the model.", value: "B" },
+            { text: "Providing only a task description and some starting text, with no examples.", value: "C" },
+            { text: "A technique that always results in zero errors.", value: "D" }
+        ],
+        correctAnswer: "C",
+        explanation: "Zero-shot means you're asking the model to perform a task 'from scratch,' without showing it any examples first. The reading material points out that 'zero-shot' literally means 'no examples' are given in the prompt, just the task itself."
+    },
+    {
+        question: "What is the main purpose of 'Role Prompting'?",
+        options: [
+            { text: "To set the overall context and purpose for the language model.", value: "A" },
+            { text: "To provide specific details or background information relevant to the current task.", value: "B" },
+            { text: "To assign a specific character or identity for the language model to adopt.", value: "C" },
+            { text: "To control the maximum number of tokens in the output.", value: "D" }
+        ],
+        correctAnswer: "C",
+        explanation: "Role prompting is like giving the AI a character to play! The goal is to have it adopt a specific persona or identity, which helps ensure its responses are consistent in tone and style with that role."
+    },
+    {
+        question: "Which prompting technique involves the LLM generating intermediate reasoning steps to improve accuracy?",
+        options: [
+            { text: "Step-back prompting", value: "A" },
+            { text: "Chain of Thought (CoT) prompting", value: "B" },
+            { text: "Self-consistency", value: "C" },
+            { text: "ReAct prompting", value: "D" }
+        ],
+        correctAnswer: "B",
+        explanation: "Chain of Thought (CoT) prompting is the one that encourages the AI to 'think out loud' by generating the steps it takes to reach an answer. This step-by-step reasoning can lead to more accurate results."
+    },
+    {
+        question: "What does 'Top-P' sampling control in LLM output configuration?",
+        options: [
+            { text: "The maximum number of tokens in the response.", value: "A" },
+            { text: "The selection of the top K most likely tokens.", value: "B" },
+            { text: "The selection of top tokens whose cumulative probability does not exceed a certain value (P).", value: "C" },
+            { text: "The temperature of the model's output.", value: "D" }
+        ],
+        correctAnswer: "C",
+        explanation: "Top-P (or nucleus sampling) is a clever way to control the pool of words the model considers. Instead of a fixed number (like Top-K), it picks from the most likely words until their combined probability reaches a set threshold 'P'."
+    },
+    {
+        question: "What is a primary benefit of 'System Prompting' when requesting JSON output?",
+        options: [
+            { text: "It makes the output more creative.", value: "A" },
+            { text: "It forces the model to create a structure and can limit hallucinations.", value: "B" },
+            { text: "It significantly reduces the computational cost.", value: "C" },
+            { text: "It automatically translates the output to multiple languages.", value: "D" }
+        ],
+        correctAnswer: "B",
+        explanation: "When you use a system prompt to ask for JSON, you're giving the model a clear blueprint for its response. This helps keep it on track, create the desired structure, and reduce the chances of it making things up (hallucinating)."
+    },
+    {
+        question: "What is 'Step-back' prompting designed to do?",
+        options: [
+            { text: "Make the LLM answer questions more quickly.", value: "A" },
+            { text: "Have the LLM consider a general question first to activate relevant background knowledge.", value: "B" },
+            { text: "Force the LLM to only use its most recent training data.", value: "C" },
+            { text: "Reduce the number of examples needed for few-shot prompting.", value: "D" }
+        ],
+        correctAnswer: "B",
+        explanation: "Step-back prompting is like taking a moment to think about the bigger picture first. By prompting the AI with a more general, related question initially, it helps activate relevant knowledge before tackling the specific problem."
+    },
+    {
+        question: "According to the 'Self-consistency' section, what does this technique combine to improve LLM reasoning?",
+        options: [
+            { text: "Greedy decoding and temperature control.", value: "A" },
+            { text: "Sampling and majority voting.", value: "B" },
+            { text: "Zero-shot prompting and role prompting.", value: "C" },
+            { text: "Output length restriction and ReAct.", value: "D" }
+        ],
+        correctAnswer: "B",
+        explanation: "Self-consistency is about getting multiple 'opinions' from the AI. It achieves this by using sampling to generate diverse reasoning paths and then picks the most common (majority vote) answer, often improving reliability."
+    },
+    {
+        question: "What does ReAct prompting enable LLMs to do?",
+        options: [
+            { text: "Only reason about a problem without taking action.", value: "A" },
+            { text: "Solve complex tasks using natural language reasoning combined with external tools.", value: "B" },
+            { text: "Automatically generate new prompts.", value: "C" },
+            { text: "Strictly follow a single linear chain of thought.", value: "D" }
+        ],
+        correctAnswer: "B",
+        explanation: "ReAct (Reason and Act) makes LLMs more powerful by allowing them to not just think, but also to *do* things, like using external tools (e.g., a search engine or code interpreter) to gather information or perform actions."
+    },
+    {
+        question: "What is the core idea behind Automatic Prompt Engineering (APE)?",
+        options: [
+            { text: "Manually crafting each prompt for maximum efficiency.", value: "A" },
+            { text: "Using an LLM to generate more prompts, which are then evaluated.", value: "B" },
+            { text: "Disabling all automatic features of the LLM.", value: "C" },
+            { text: "Focusing solely on code generation prompts.", value: "D" }
+        ],
+        correctAnswer: "B",
+        explanation: "APE is quite meta! It's about using an AI to help create better prompts for another AI. The process involves having one model generate various prompt candidates, which are then tested and refined."
+    },
+    {
+        question: "When using Gemini for code generation, what is a key recommendation if you are concerned about confidentiality?",
+        options: [
+            { text: "Only use the public consumer chatbot Gemini.", value: "A" },
+            { text: "Write prompts within your Google Cloud account using Vertex AI Studio.", value: "B" },
+            { text: "Avoid code generation tasks altogether.", value: "C" },
+            { text: "Set the temperature to maximum.", value: "D" }
+        ],
+        correctAnswer: "B",
+        explanation: "For enhanced confidentiality with code generation, the material suggests using Vertex AI Studio within your own Google Cloud account. This offers a more controlled environment than a public chatbot."
+    },
+    {
+        question: "What is one of the MOST important best practices in prompt engineering, according to the text?",
+        options: [
+            { text: "Always using the shortest possible prompts.", value: "A" },
+            { text: "Providing (one-shot / few-shot) examples within a prompt.", value: "B" },
+            { text: "Setting the temperature to 0 for all tasks.", value: "C" },
+            { text: "Avoiding the use of variables in prompts.", value: "D" }
+        ],
+        correctAnswer: "B",
+        explanation: "Showing the AI what you want is incredibly effective! The reading material emphasizes that providing examples (one-shot or few-shot) is a top best practice for guiding the model to produce the desired output."
+    },
+    {
+        question: "When designing prompts, what does 'Design with simplicity' primarily mean?",
+        options: [
+            { text: "Using highly technical jargon to be precise.", value: "A" },
+            { text: "Making prompts concise, clear, and easy to understand.", value: "B" },
+            { text: "Including as much information as possible, even if irrelevant.", value: "C" },
+            { text: "Only using single-word prompts.", value: "D" }
+        ],
+        correctAnswer: "B",
+        explanation: "Simplicity in prompt design is about clarity. Your prompts should be straightforward and easy for both you and the AI to understand, avoiding unnecessary complexity or confusing language."
+    },
+    {
+        question: "Why is it generally better to use positive instructions over constraints in prompts?",
+        options: [
+            { text: "Constraints make the LLM more creative.", value: "A" },
+            { text: "Positive instructions directly communicate the desired outcome, while constraints might leave the model guessing.", value: "B" },
+            { text: "Constraints are never useful in prompting.", value: "C" },
+            { text: "Positive instructions always lead to shorter LLM responses.", value: "D" }
+        ],
+        correctAnswer: "B",
+        explanation: "Telling the AI *what to do* (positive instructions) is often more effective than just listing *what not to do* (constraints). Positive instructions clearly define the goal, giving the AI better direction."
+    },
+    {
+        question: "For few-shot prompting with classification tasks, what is recommended regarding the order of examples?",
+        options: [
+            { text: "Always present examples of the same class consecutively.", value: "A" },
+            { text: "The order does not matter at all.", value: "B" },
+            { text: "Mix up the possible response classes in the few-shot examples.", value: "C" },
+            { text: "Only use examples from the most common class.", value: "D" }
+        ],
+        correctAnswer: "C",
+        explanation: "To prevent the model from just memorizing a pattern based on order, it's good practice to mix up the examples of different classes when doing few-shot prompting for classification tasks. This helps it learn the actual features of each class."
+    },
+    {
+        question: "What is a key recommendation for CoT (Chain of Thought) prompting regarding temperature setting?",
+        options: [
+            { text: "Set the temperature to a high value for creativity.", value: "A" },
+            { text: "Set the temperature to 0 (greedy decoding).", value: "B" },
+            { text: "Temperature setting is irrelevant for CoT.", value: "C" },
+            { text: "Alternate between high and low temperatures.", value: "D" }
+        ],
+        correctAnswer: "B",
+        explanation: "For Chain of Thought, where you want the AI to follow a logical reasoning path, a temperature of 0 is generally recommended. This makes the AI choose the most probable next step, leading to more deterministic and focused reasoning."
+    },
+    {
+        question: "What is the primary reason for documenting prompt attempts in detail?",
+        options: [
+            { text: "To make the prompt engineering process slower.", value: "A" },
+            { text: "To have a record for revisiting work, testing on different model versions, and debugging.", value: "B" },
+            { text: "To share prompts publicly without context.", value: "C" },
+            { text: "It's a requirement only for code-related prompts.", value: "D" }
+        ],
+        correctAnswer: "B",
+        explanation: "Keeping good notes is crucial! Documenting your prompt experiments helps you learn what works, track changes, test with new model versions, and makes debugging much easier down the line."
+    },
+    {
+        question: "What does 'Tree of Thoughts (ToT)' generalize from CoT prompting?",
+        options: [
+            { text: "It forces a single, linear path of reasoning.", value: "A" },
+            { text: "It allows LLMs to explore multiple different reasoning paths simultaneously.", value: "B" },
+            { text: "It eliminates the need for any intermediate steps.", value: "C" },
+            { text: "It is only applicable to text summarization tasks.", value: "D" }
+        ],
+        correctAnswer: "B",
+        explanation: "Tree of Thoughts takes Chain of Thought a step further. Instead of just one line of reasoning, ToT enables the AI to explore several different reasoning paths at once, like branches of a tree, which can be very useful for complex problems."
+    },
+    {
+        question: "What is a disadvantage of using Chain of Thought (CoT) prompting mentioned in the text?",
+        options:
                 [
                     { text: "It reduces the interpretability of the model's response.", value: "A" },
                     { text: "It makes the model less robust across different LLM versions.", value: "B" },
                     { text: "The response includes reasoning, leading to more output tokens, higher cost, and longer time.", value: "C" },
                     { text: "It only works well with fine-tuned models.", value: "D" }
                 ],
-                correctAnswer: "C",
-                explanation: "A disadvantage is: 'The LLM response includes the chain of thought reasoning, which means more output tokens, which means predictions cost more money and take longer.'"
-            }
-        ];
+        correctAnswer: "C",
+        explanation: "While CoT is great for reasoning, one downside is that the 'thinking steps' are included in the output. This means more words (tokens), which can make the response longer, take more time to generate, and potentially cost more."
+    }
+];
 
         // DOM Elements for Questions Part
         const questionsArea = document.getElementById('questions-area');
@@ -2191,6 +2249,9 @@ September 2024 64`
         let shuffledQuestionIndices = [];
         let currentQuestionIndexInShuffledList = 0;
         let correctAnswersCount = 0;
+        let isRedoMode = false;
+        let incorrectQuestionIndices = []; // Will store original indices of wrong questions
+        
 
 
         // --- Reading Part Functions ---
@@ -2222,6 +2283,9 @@ September 2024 64`
         }
 
         function startQuiz() {
+            isRedoMode = false;
+            incorrectQuestionIndices = [];
+
             confirmationPopup.style.display = 'none';
             correctAnswersCount = 0; // Reset score
             quizSummaryDiv.style.display = 'none'; // Hide summary from previous attempts
@@ -2261,10 +2325,34 @@ September 2024 64`
             displaySingleQuestion();
         }
 
-        function displaySingleQuestion() {
-            quizSummaryDiv.style.display = 'none'; // Ensure summary is hidden when showing a question
-            questionTextElement.style.display = 'block';
-            optionsContainer.style.display = 'block';
+                // Inside your existing <script> tag
+
+                // Inside your existing <script> tag
+
+                    function displaySingleQuestion() {
+            // --- Start of new animation code ---
+            // Apply fade-in to the main question elements container
+            // Ensure these elements exist and are the ones you want to animate as a group
+            const questionContentGroup = document.getElementById('question-text-container'); // Or a common parent
+            const optionsGroup = document.getElementById('options-container');
+
+            // Remove previous animation classes
+            questionContentGroup.classList.remove('question-transition-in', 'question-transition-out');
+            optionsGroup.classList.remove('question-transition-in', 'question-transition-out');
+            
+            // Force reflow to restart animation if classes were just removed and re-added
+            void questionContentGroup.offsetWidth;
+            void optionsGroup.offsetWidth;
+
+            // Apply fade-in
+            questionContentGroup.classList.add('question-transition-in');
+            optionsGroup.classList.add('question-transition-in');
+            // --- End of new animation code ---
+
+
+            quizSummaryDiv.style.display = 'none';
+            questionTextElement.style.display = 'block'; // Ensure these are block for animation
+            optionsContainer.style.display = 'block'; // Ensure these are block for animation
 
 
             const currentQuestionDataIndex = shuffledQuestionIndices[currentQuestionIndexInShuffledList];
@@ -2273,7 +2361,7 @@ September 2024 64`
             currentQuestionNumberSpan.textContent = currentQuestionIndexInShuffledList + 1;
             questionTextElement.textContent = currentQuestion.question;
 
-            optionsContainer.innerHTML = '';
+            optionsContainer.innerHTML = ''; // Clear old options *after* fade out ideally, but this is simpler
             feedbackDiv.style.display = 'none';
             feedbackMessage.textContent = '';
             explanationDiv.innerHTML = '';
@@ -2306,7 +2394,9 @@ September 2024 64`
             });
         }
 
-        function handleSubmitAnswer() {
+                // Inside your existing <script> tag
+
+                    function handleSubmitAnswer() {
             const selectedOptionInput = document.querySelector('input[name="answer"]:checked');
 
             if (!selectedOptionInput) {
@@ -2314,6 +2404,7 @@ September 2024 64`
                 return;
             }
 
+            // ... (rest of your existing logic to get userAnswer, currentQuestion, correctAnswerValue) ...
             const userAnswer = selectedOptionInput.value;
             const currentQuestionDataIndex = shuffledQuestionIndices[currentQuestionIndexInShuffledList];
             const currentQuestion = allQuestions[currentQuestionDataIndex];
@@ -2326,20 +2417,28 @@ September 2024 64`
                 correctLabel.classList.add('correct-answer');
             }
 
+            // --- Modify feedback div classes ---
+            feedbackDiv.classList.remove('correct-answer-feedback', 'wrong-answer-feedback', 'question-transition-in');
+            void feedbackDiv.offsetWidth; // Reflow
+
             if (userAnswer === correctAnswerValue) {
                 feedbackMessage.textContent = "Correct!";
-                feedbackMessage.style.color = 'green';
+                feedbackMessage.style.color = '#0f5132'; // Darker green for text
                 explanationDiv.innerHTML = currentQuestion.explanation ? `<p>${currentQuestion.explanation}</p>` : '';
-                correctAnswersCount++; // Increment score
+                correctAnswersCount++;
+                feedbackDiv.classList.add('correct-answer-feedback');
             } else {
                 feedbackMessage.textContent = "Wrong!";
-                feedbackMessage.style.color = 'red';
+                feedbackMessage.style.color = '#721c24'; // Darker red for text
                 explanationDiv.innerHTML = `<p>The correct answer was ${correctAnswerValue}.</p>${currentQuestion.explanation ? `<p>${currentQuestion.explanation}</p>` : ''}`;
-                
+                incorrectQuestionIndices.push(currentQuestionDataIndex);
+
                 const selectedLabel = selectedOptionInput.closest('label');
-                if (selectedLabel) {
-                    selectedLabel.classList.add('wrong-answer');
+                if (!isRedoMode || (isRedoMode && !allQuestions[currentQuestionDataIndex].justCorrectedInRedo)) 
+                {
+                    incorrectQuestionIndices.push(currentQuestionDataIndex);
                 }
+                
             }
             
             if (currentQuestion.illustration) {
@@ -2350,42 +2449,152 @@ September 2024 64`
             }
 
             feedbackDiv.style.display = 'block';
+            feedbackDiv.classList.add('question-transition-in'); // Fade in feedback
+            // --- End of feedback div class modification ---
+
             submitAnswerButton.style.display = 'none';
             nextQuestionButton.style.display = 'inline-block';
         }
-
-        function handleNextQuestion() {
-            currentQuestionIndexInShuffledList++;
-            if (currentQuestionIndexInShuffledList < allQuestions.length) {
-                displaySingleQuestion();
-            } else {
-                // Quiz finished - Display evaluation
-                questionTextElement.style.display = 'none';
-                optionsContainer.style.display = 'none';
-                submitAnswerButton.style.display = 'none';
-                nextQuestionButton.style.display = 'none';
-                feedbackDiv.style.display = 'none';
-                document.querySelector('#questions-area h2').style.display = 'none'; // Hide "Question X of Y"
+                // Inside your existing <script> tag
 
 
-                const totalAnswered = allQuestions.length;
-                const percentage = totalAnswered > 0 ? Math.round((correctAnswersCount / totalAnswered) * 100) : 0;
+        // Add this function inside your <script> tag
 
-                let summaryHTML = `<h2>Quiz Finished!</h2>`;
-                summaryHTML += `<p>You answered ${correctAnswersCount} out of ${totalAnswered} questions correctly (${percentage}%).</p>`;
-
-                if (percentage >= 80) {
-                    summaryHTML += `<p>Excellent work! You have a strong understanding of the material.</p>`;
-                } else if (percentage >= 50) {
-                    summaryHTML += `<p>Good effort! You might want to review some sections for a deeper understanding.</p>`;
-                } else {
-                    summaryHTML += `<p>Keep practicing! Reviewing the material and trying the quiz again will help improve your score.</p>`;
-                }
-                quizSummaryDiv.innerHTML = summaryHTML;
-                quizSummaryDiv.style.display = 'block';
-                backToReadingButton.style.display = 'inline-block'; // Ensure it's visible
-            }
+            function getGermanGrade(percentage) {
+            if (percentage >= 92) return { grade: "1,0", description: "Sehr gut" }; // (Very Good - Excellent)
+            if (percentage >= 87) return { grade: "1,3", description: "Sehr gut" };
+            if (percentage >= 82) return { grade: "1,7", description: "Gut" };       // (Good)
+            if (percentage >= 77) return { grade: "2,0", description: "Gut" };
+            if (percentage >= 72) return { grade: "2,3", description: "Gut" };
+            if (percentage >= 67) return { grade: "2,7", description: "Befriedigend" }; // (Satisfactory)
+            if (percentage >= 62) return { grade: "3,0", description: "Befriedigend" };
+            if (percentage >= 57) return { grade: "3,3", description: "Befriedigend" };
+            if (percentage >= 50) return { grade: "3,7", description: "Ausreichend" }; // (Sufficient)
+            if (percentage >= 45) return { grade: "4,0", description: "Ausreichend" }; // Technically passing
+            // Below 4.0 is typically "Mangelhaft" (Deficient) or "Ungenügend" (Insufficient)
+            if (percentage >= 30) return { grade: "5,0", description: "Mangelhaft" }; // (Deficient - Fail)
+            return { grade: "6,0", description: "Ungenügend" };                   // (Insufficient - Fail)
         }
+
+
+
+        
+        
+        
+        
+        
+        
+        
+                // REPLACE your existing handleNextQuestion function with this one
+                function handleNextQuestion() {
+            const questionContentGroup = document.getElementById('question-text-container');
+            const optionsGroup = document.getElementById('options-container');
+            const feedbackGroup = document.getElementById('feedback');
+
+            questionContentGroup.classList.remove('question-transition-in');
+            optionsGroup.classList.remove('question-transition-in');
+            feedbackGroup.classList.remove('question-transition-in');
+
+            questionContentGroup.classList.add('question-transition-out');
+            optionsGroup.classList.add('question-transition-out');
+            feedbackGroup.classList.add('question-transition-out');
+
+            setTimeout(() => {
+                currentQuestionIndexInShuffledList++;
+                if (currentQuestionIndexInShuffledList < shuffledQuestionIndices.length) {
+                    displaySingleQuestion();
+                } else { // Quiz or Redo session finished
+                    questionTextElement.style.display = 'none';
+                    optionsContainer.style.display = 'none';
+                    submitAnswerButton.style.display = 'none';
+                    nextQuestionButton.style.display = 'none';
+                    feedbackDiv.style.display = 'none';
+                    document.querySelector('#questions-area h2').style.display = 'none';
+
+                    const totalInThisSession = shuffledQuestionIndices.length;
+                    const percentage = totalInThisSession > 0 ? Math.round((correctAnswersCount / totalInThisSession) * 100) : 0;
+
+                    let summaryHTML = ``;
+                    if (isRedoMode) {
+                        summaryHTML += `<h2>Wiederholung Falscher Fragen - Auswertung!</h2>`;
+                        summaryHTML += `<p>Du hast ${correctAnswersCount} von ${totalInThisSession} zuvor falsch beantworteten Fragen jetzt richtig (${percentage}%).</p>`;
+                        if (incorrectQuestionIndices.length > 0) { // These are newly incorrect from the redo session
+                             summaryHTML += `<p>Es gibt immer noch ${incorrectQuestionIndices.length} Fragen, die du falsch beantwortet hast. Du kannst sie erneut wiederholen.</p>`;
+                        } else if (totalInThisSession > 0) { // All redone questions were answered correctly
+                            summaryHTML += `<p>Sehr gut! Alle zuvor falschen Fragen wurden jetzt richtig beantwortet!</p>`;
+                        } else { // Should not happen if startRedoIncorrect checks length
+                            summaryHTML += `<p>Keine Fragen in dieser Wiederholungsrunde.</p>`;
+                        }
+                    } else { // Original quiz summary
+                        const germanGradeInfo = getGermanGrade(percentage);
+                        summaryHTML += `<h2>Quiz Auswertung!</h2>`;
+                        summaryHTML += `<p>Du hast ${correctAnswersCount} von ${totalInThisSession} Fragen richtig beantwortet (${percentage}%).</p>`;
+                        summaryHTML += `<p>Deine Note: <strong>${germanGradeInfo.grade} (${germanGradeInfo.description})</strong></p>`;
+                        if (percentage >= 82) summaryHTML += `<p>Sehr gute Leistung! Du hast ein starkes Verständnis des Materials.</p>`;
+                        else if (percentage >= 62) summaryHTML += `<p>Gute Leistung! Einige Bereiche könntest du für ein tieferes Verständnis wiederholen.</p>`;
+                        else if (percentage >= 45) summaryHTML += `<p>Bestanden! Es gibt jedoch noch Raum für Verbesserungen.</p>`;
+                        else summaryHTML += `<p>Übe weiter! Das Wiederholen des Materials und ein erneuter Versuch helfen dir, dich zu verbessern.</p>`;
+                    }
+
+                    quizSummaryDiv.innerHTML = summaryHTML;
+                    quizSummaryDiv.style.display = 'block';
+                    quizSummaryDiv.classList.add('question-transition-in');
+                    backToReadingButton.style.display = 'inline-block';
+
+                    // Add "Redo Incorrect Questions" button if there are any NEWLY incorrect questions from THIS session
+                    // or if it was the main quiz and there were incorrects.
+                    if (incorrectQuestionIndices.length > 0) {
+                        // Check if a redo button already exists to avoid duplicates if logic gets complex
+                        if (!document.getElementById('redo-incorrect-button')) {
+                            const redoButton = document.createElement('button');
+                            redoButton.id = 'redo-incorrect-button';
+                            redoButton.textContent = isRedoMode ? 'Erneut falsche Fragen wiederholen' : 'Falsche Fragen wiederholen';
+                            redoButton.style.marginLeft = '10px';
+                            quizSummaryDiv.appendChild(redoButton);
+                            redoButton.addEventListener('click', startRedoIncorrect);
+                        }
+                    }
+                    isRedoMode = false; // Reset after displaying redo summary if it was a redo session.
+                                      // If it was a main quiz, this has no effect until startRedoIncorrect is called.
+                } // This was the correctly placed brace from the previous fix
+
+                questionContentGroup.classList.remove('question-transition-out');
+                optionsGroup.classList.remove('question-transition-out');
+                feedbackGroup.classList.remove('question-transition-out');
+            }, 300);
+        }
+
+
+                // Add this ENTIRE function as a new function in your script
+
+        function startRedoIncorrect() {
+            if (incorrectQuestionIndices.length === 0) {
+                alert("Du hattest keine falschen Antworten zum Wiederholen!");
+                return;
+            }
+
+            isRedoMode = true;
+            shuffledQuestionIndices = [...incorrectQuestionIndices]; // Use the list of incorrect indices
+            incorrectQuestionIndices = []; // Clear the list for the current redo session (to track new mistakes in this redo)
+            
+            correctAnswersCount = 0;
+            currentQuestionIndexInShuffledList = 0;
+
+            quizSummaryDiv.style.display = 'none';
+            quizSummaryDiv.classList.remove('question-transition-in');
+            document.querySelector('#questions-area h2').style.display = 'block';
+            totalQuestionsSpan.textContent = shuffledQuestionIndices.length;
+
+            // Make sure question content area is visible again
+            document.getElementById('question-text-container').style.display = 'block';
+            document.getElementById('options-container').style.display = 'block';
+            document.getElementById('submit-answer').style.display = 'inline-block';
+            document.getElementById('next-question').style.display = 'none';
+
+
+            displaySingleQuestion();
+        }
+
 
         function backToReading() {
             questionsArea.style.display = 'none';
@@ -2434,7 +2643,7 @@ September 2024 64`
 
         // Initial page load for reading material
         displayPage();
-
+    
     </script>
 </body>
 </html>
