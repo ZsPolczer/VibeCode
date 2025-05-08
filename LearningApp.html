@@ -30,7 +30,7 @@ html
             border: 1px solid #ddd;
             padding: 15px;
             margin-bottom: 20px;
-            min-height: 300px; /* Adjusted min-height */
+            min-height: 300px;
             background-color: #fff;
             border-radius: 5px;
             white-space: pre-wrap;
@@ -90,8 +90,8 @@ html
             border: 1px solid #eee;
             font-family: "Courier New", Courier, monospace;
             font-size: 0.9em;
-            white-space: pre-wrap; /* Allow wrapping within pre for long lines */
-            word-break: break-all; /* Break long words if necessary */
+            white-space: pre-wrap;
+            word-break: break-all;
         }
         .page-info {
             text-align: center;
@@ -159,6 +159,13 @@ html
             border: 1px solid #ddd;
             border-radius: 4px;
         }
+        #quiz-summary p {
+            font-size: 1.1em;
+            margin-bottom: 10px;
+        }
+        #quiz-summary h2 {
+             margin-bottom: 15px;
+        }
     </style>
 </head>
 <body>
@@ -189,6 +196,9 @@ html
             <p id="feedback-message"></p>
             <div id="explanation"></div>
             <img id="illustration" src="" alt="Illustration" style="display: none;">
+        </div>
+        <div id="quiz-summary" style="display:none; text-align:center;">
+            <!-- Evaluation will be shown here -->
         </div>
         <button id="submit-answer">Submit Answer</button>
         <button id="next-question" style="display: none;">Next Question</button>
@@ -1317,12 +1327,14 @@ if [ ! -d "$folder_name" ]; then
     exit 1
 fi
 # Get the list of files in the folder
-files=("$folder_name"/*)
-# Rename each file by prepending "draft" to the file name
-for file in "\${files[@]}"; do
-    # Construct the new file name within the target folder
-    new_file_path="$folder_name/draft_$(basename "$file")"
-    mv "$file" "$new_file_path"
+# Loop through files in the specified folder
+for file in "$folder_name"/*; do
+    # Check if it's a file (not a directory)
+    if [ -f "$file" ]; then
+        # Construct the new file name within the target folder
+        new_file_path="$folder_name/draft_$(basename "$file")"
+        mv "$file" "$new_file_path"
+    fi
 done
 echo "Files renamed successfully."
 </code>
@@ -1370,10 +1382,11 @@ if [ ! -d "$folder_name" ]; then
     echo "Folder does not exist."
     exit 1
 fi
-files=("$folder_name"/*)
-for file in "\${files[@]}"; do
-    new_file_path="$folder_name/draft_$(basename "$file")"
-    mv "$file" "$new_file_path"
+for file in "$folder_name"/*; do
+    if [ -f "$file" ]; then
+        new_file_path="$folder_name/draft_$(basename "$file")"
+        mv "$file" "$new_file_path"
+    fi
 done
 echo "Files renamed successfully."
 </code>
@@ -1391,21 +1404,14 @@ September 2024 45
 Prompt Engineering
 
 Output (Continued)
-3. File Listing:
-It lists all the files inside the specified folder using the ‘files=( “$folder_
-name”/* )) command. This creates an array called ‘files’ containing the paths
-to all the files in the folder.
-4. File Renaming:
-It iterates through each file in the ‘files’ array using a ‘for’ loop.
-For each file, it generates a new file name using the ‘new_file_
-path="$folder_name/draft_$(basename "$file")"' command. This new file name is created
-by prefixing the original file name (without its path) with the string “draft_” and ensuring it's placed
-within the original folder.
-It then renames the file using the ‘mv “$file” “$new_file_path”’ command,
-which moves/renames the file to the new file name within the same folder.
-5. Success Message:
-After renaming all the files, it displays a success message (“Files renamed
-successfully.”) to indicate that the renaming operation was successful
+3. File Iteration and Renaming:
+It iterates through each item in the specified folder using a ‘for’ loop ('for file in "$folder_name"/*').
+Inside the loop, it first checks if the current item is a regular file (if [ -f "$file" ]).
+If it is a file, it generates a new file name by prepending "draft_" to the original file name (using basename to get just the file name without the path). The new path is constructed to be within the original folder.
+It then renames the file using the ‘mv “$file” “$new_file_path”’ command.
+4. Success Message:
+After processing all items in the folder, it displays a success message (“Files renamed
+successfully.”) to indicate that the renaming operation was attempted for all files.
 Table 17. A prompt for explaining code
 </pre>
 Prompts for translating code
@@ -1434,10 +1440,11 @@ if [ ! -d "$folder_name" ]; then
     echo "Folder does not exist."
     exit 1
 fi
-files=("$folder_name"/*)
-for file in "\${files[@]}"; do
-    new_file_path="$folder_name/draft_$(basename "$file")"
-    mv "$file" "$new_file_path"
+for file in "$folder_name"/*; do
+    if [ -f "$file" ]; then
+        new_file_path="$folder_name/draft_$(basename "$file")"
+        mv "$file" "$new_file_path"
+    fi
 done
 echo "Files renamed successfully."
 </code>
@@ -1450,16 +1457,16 @@ folder_name = input("Enter the folder name: ")
 if not os.path.isdir(folder_name):
     print("Folder does not exist.")
     exit(1)
-# Get a list of all files in the folder
-files = os.listdir(folder_name)
-# Iterate over the files
-for file_name_only in files: # Renamed 'file' to 'file_name_only' for clarity
-    # Create a new file name with the prefix "draft_"
-    old_file_path = os.path.join(folder_name, file_name_only)
-    new_renamed_file_name_only = f"draft_{file_name_only}"
-    new_file_path = os.path.join(folder_name, new_renamed_file_name_only)
-    # Move the file to the new name
-    shutil.move(old_file_path, new_file_path)
+# Iterate over the files in the directory
+for filename in os.listdir(folder_name):
+    original_file_path = os.path.join(folder_name, filename)
+    # Check if it's a file (not a directory)
+    if os.path.isfile(original_file_path):
+        # Create a new file name with the prefix "draft_"
+        new_filename_prefixed = f"draft_{filename}"
+        new_file_path_with_prefix = os.path.join(folder_name, new_filename_prefixed)
+        # Move/rename the file
+        shutil.move(original_file_path, new_file_path_with_prefix)
 # Print a success message
 print("Files renamed successfully.")
 </code>
@@ -1495,12 +1502,13 @@ text = toUpperCase(prefix) # This line has the bug
 if not os.path.isdir(folder_name) :
     print("Folder does not exist.")
     exit(1)
-files = os.listdir(folder_name)
-for file_name_only in files: # Using consistent variable name
-    new_filename_with_prefix = f"{text}_{file_name_only}" # Variable name was new_file_name
-    old_path = os.path.join(folder_name, file_name_only)
-    new_path = os.path.join(folder_name, new_filename_with_prefix) # Corrected to new_filename_with_prefix
-    shutil.move(old_path, new_path)
+# Iterate over the files in the directory
+for filename in os.listdir(folder_name):
+    original_file_path = os.path.join(folder_name, filename)
+    if os.path.isfile(original_file_path):
+        new_filename_with_prefix = f"{text}_{filename}"
+        new_path_with_prefix = os.path.join(folder_name, new_filename_with_prefix)
+        shutil.move(original_file_path, new_path_with_prefix)
 print("Files renamed successfully.")
 Snippet 3. A broken Python script
 </code></pre>
@@ -1544,15 +1552,13 @@ text = toUpperCase(prefix) # Error is here
 if not os.path.isdir(folder_name):
     print("Folder does not exist.")
     exit(1)
-# Get a list of all files in the folder
-files = os.listdir(folder_name)
 # Iterate over the files
-for file_name_only in files:
-    # Create a new file name with the prefix
-    new_filename_with_prefix = f"{text}_{file_name_only}"
-    # Move the file to the new name
-    shutil.move(os.path.join(folder_name, file_name_only),
-                os.path.join(folder_name, new_filename_with_prefix))
+for filename in os.listdir(folder_name):
+    original_file_path = os.path.join(folder_name, filename)
+    if os.path.isfile(original_file_path):
+        new_filename_with_prefix = f"{text}_{filename}"
+        new_path_with_prefix = os.path.join(folder_name, new_filename_with_prefix)
+        shutil.move(original_file_path, new_path_with_prefix)
 # Print a success message
 print("Files renamed successfully.")
 </code>
@@ -1576,15 +1582,13 @@ text = prefix.upper() # Corrected line
 if not os.path.isdir(folder_name):
     print("Folder does not exist.")
     exit(1)
-# Get a list of all files in the folder
-files = os.listdir(folder_name)
 # Iterate over the files
-for file_name_only in files:
-    # Create a new file name with the prefix
-    new_filename_with_prefix = f"{text}_{file_name_only}"
-    # Move the file to the new name
-    shutil.move(os.path.join(folder_name, file_name_only),
-                os.path.join(folder_name, new_filename_with_prefix))
+for filename in os.listdir(folder_name):
+    original_file_path = os.path.join(folder_name, filename)
+    if os.path.isfile(original_file_path):
+        new_filename_with_prefix = f"{text}_{filename}"
+        new_path_with_prefix = os.path.join(folder_name, new_filename_with_prefix)
+        shutil.move(original_file_path, new_path_with_prefix)
 # Print a success message
 print("Files renamed successfully.")
 </code>
@@ -1611,27 +1615,22 @@ import os
 import shutil
 # Get the folder name from the user
 folder_name = input("Enter the folder name: ")
-prefix_to_add = input("Enter the string to prepend to the filename: ") # Renamed for clarity
+prefix_to_add = input("Enter the string to prepend to the filename: ")
 # Check if the folder exists
 if not os.path.isdir(folder_name):
     print("Folder does not exist.")
     exit(1)
-# Get a list of all files in the folder
-files_in_dir = os.listdir(folder_name) # Renamed for clarity
 # Iterate over the files
-for current_file_name in files_in_dir: # Renamed for clarity
-    # Get the file extension
-    name_part, ext = os.path.splitext(current_file_name)
-    # Create a new file name with the prefix and the file extension
-    new_file_name = f"{prefix_to_add.upper()}_{name_part}{ext}" # Applied .upper() here
-    # Build the full paths for the original and new files
-    old_path = os.path.join(folder_name, current_file_name)
-    new_path = os.path.join(folder_name, new_file_name)
-    # Try to move the file
-    try:
-        shutil.move(old_path, new_path)
-    except Exception as e:
-        print(f"An error occurred while moving the file {current_file_name}: {e}")
+for current_filename in os.listdir(folder_name):
+    original_file_path = os.path.join(folder_name, current_filename)
+    if os.path.isfile(original_file_path):
+        name_part, ext = os.path.splitext(current_filename)
+        new_full_filename = f"{prefix_to_add.upper()}_{name_part}{ext}"
+        new_full_path = os.path.join(folder_name, new_full_filename)
+        try:
+            shutil.move(original_file_path, new_full_path)
+        except Exception as e:
+            print(f"An error occurred while moving the file {current_filename}: {e}")
 # Print a success message
 print("Files renamed successfully.")
 </code>
@@ -1958,8 +1957,7 @@ September 2024 64`
                     { text: "It's the training data for the model.", value: "D" }
                 ],
                 correctAnswer: "B",
-                explanation: "The text states: 'a text prompt... is the input the model uses to predict a specific output.'",
-                // illustration: "path/to/illustration1.png" // Optional
+                explanation: "The text states: 'a text prompt... is the input the model uses to predict a specific output.'"
             },
             {
                 question: "Which LLM output configuration setting directly controls the degree of randomness in token selection?",
@@ -1970,7 +1968,7 @@ September 2024 64`
                     { text: "Top-P", value: "D" }
                 ],
                 correctAnswer: "C",
-                explanation: "The section on 'Temperature' says: 'Temperature controls the degree of randomness in token selection.'",
+                explanation: "The section on 'Temperature' says: 'Temperature controls the degree of randomness in token selection.'"
             },
             {
                 question: "What is 'zero-shot' prompting?",
@@ -2004,8 +2002,173 @@ September 2024 64`
                 ],
                 correctAnswer: "B",
                 explanation: "Chain of Thought (CoT) prompting is described as 'a technique for improving the reasoning capabilities of LLMs by generating intermediate reasoning steps.'"
+            },
+            {
+                question: "What does 'Top-P' sampling control in LLM output configuration?",
+                options: [
+                    { text: "The maximum number of tokens in the response.", value: "A" },
+                    { text: "The selection of the top K most likely tokens.", value: "B" },
+                    { text: "The selection of top tokens whose cumulative probability does not exceed a certain value (P).", value: "C" },
+                    { text: "The temperature of the model's output.", value: "D" }
+                ],
+                correctAnswer: "C",
+                explanation: "Top-P sampling 'selects the top tokens whose cumulative probability does not exceed a certain value (P).'"
+            },
+            {
+                question: "What is a primary benefit of 'System Prompting' when requesting JSON output?",
+                options: [
+                    { text: "It makes the output more creative.", value: "A" },
+                    { text: "It forces the model to create a structure and can limit hallucinations.", value: "B" },
+                    { text: "It significantly reduces the computational cost.", value: "C" },
+                    { text: "It automatically translates the output to multiple languages.", value: "D" }
+                ],
+                correctAnswer: "B",
+                explanation: "The text states: 'by prompting for a JSON format it forces the model to create a structure and limit hallucinations.'"
+            },
+            {
+                question: "What is 'Step-back' prompting designed to do?",
+                options: [
+                    { text: "Make the LLM answer questions more quickly.", value: "A" },
+                    { text: "Have the LLM consider a general question first to activate relevant background knowledge.", value: "B" },
+                    { text: "Force the LLM to only use its most recent training data.", value: "C" },
+                    { text: "Reduce the number of examples needed for few-shot prompting.", value: "D" }
+                ],
+                correctAnswer: "B",
+                explanation: "Step-back prompting involves 'prompting the LLM to first consider a general question related to the specific task at hand... This ‘step back’ allows the LLM to activate relevant background knowledge...'"
+            },
+            {
+                question: "According to the 'Self-consistency' section, what does this technique combine to improve LLM reasoning?",
+                options: [
+                    { text: "Greedy decoding and temperature control.", value: "A" },
+                    { text: "Sampling and majority voting.", value: "B" },
+                    { text: "Zero-shot prompting and role prompting.", value: "C" },
+                    { text: "Output length restriction and ReAct.", value: "D" }
+                ],
+                correctAnswer: "B",
+                explanation: "Self-consistency 'combines sampling and majority voting to generate diverse reasoning paths and select the most consistent answer.'"
+            },
+            {
+                question: "What does ReAct prompting enable LLMs to do?",
+                options: [
+                    { text: "Only reason about a problem without taking action.", value: "A" },
+                    { text: "Solve complex tasks using natural language reasoning combined with external tools.", value: "B" },
+                    { text: "Automatically generate new prompts.", value: "C" },
+                    { text: "Strictly follow a single linear chain of thought.", value: "D" }
+                ],
+                correctAnswer: "B",
+                explanation: "ReAct prompting is 'a paradigm for enabling LLMs to solve complex tasks using natural language reasoning combined with external tools (search, code interpreter etc.)'"
+            },
+            {
+                question: "What is the core idea behind Automatic Prompt Engineering (APE)?",
+                options: [
+                    { text: "Manually crafting each prompt for maximum efficiency.", value: "A" },
+                    { text: "Using an LLM to generate more prompts, which are then evaluated.", value: "B" },
+                    { text: "Disabling all automatic features of the LLM.", value: "C" },
+                    { text: "Focusing solely on code generation prompts.", value: "D" }
+                ],
+                correctAnswer: "B",
+                explanation: "With APE, 'You will prompt a model to generate more prompts. Evaluate them, possibly alter the good ones. And repeat.'"
+            },
+            {
+                question: "When using Gemini for code generation, what is a key recommendation if you are concerned about confidentiality?",
+                options: [
+                    { text: "Only use the public consumer chatbot Gemini.", value: "A" },
+                    { text: "Write prompts within your Google Cloud account using Vertex AI Studio.", value: "B" },
+                    { text: "Avoid code generation tasks altogether.", value: "C" },
+                    { text: "Set the temperature to maximum.", value: "D" }
+                ],
+                correctAnswer: "B",
+                explanation: "The text suggests: 'if you are more concerned about confidentiality, you can write these prompts within your Google Cloud account and open Vertex AI Studio.'"
+            },
+            {
+                question: "What is one of the MOST important best practices in prompt engineering, according to the text?",
+                options: [
+                    { text: "Always using the shortest possible prompts.", value: "A" },
+                    { text: "Providing (one-shot / few-shot) examples within a prompt.", value: "B" },
+                    { text: "Setting the temperature to 0 for all tasks.", value: "C" },
+                    { text: "Avoiding the use of variables in prompts.", value: "D" }
+                ],
+                correctAnswer: "B",
+                explanation: "The text states: 'The most important best practice is to provide (one shot / few shot) examples within a prompt.'"
+            },
+            {
+                question: "When designing prompts, what does 'Design with simplicity' primarily mean?",
+                options: [
+                    { text: "Using highly technical jargon to be precise.", value: "A" },
+                    { text: "Making prompts concise, clear, and easy to understand.", value: "B" },
+                    { text: "Including as much information as possible, even if irrelevant.", value: "C" },
+                    { text: "Only using single-word prompts.", value: "D" }
+                ],
+                correctAnswer: "B",
+                explanation: "'Prompts should be concise, clear, and easy to understand for both you and the model.'"
+            },
+            {
+                question: "Why is it generally better to use positive instructions over constraints in prompts?",
+                options: [
+                    { text: "Constraints make the LLM more creative.", value: "A" },
+                    { text: "Positive instructions directly communicate the desired outcome, while constraints might leave the model guessing.", value: "B" },
+                    { text: "Constraints are never useful in prompting.", value: "C" },
+                    { text: "Positive instructions always lead to shorter LLM responses.", value: "D" }
+                ],
+                correctAnswer: "B",
+                explanation: "The text mentions: 'Instructions directly communicate the desired outcome, whereas constraints might leave the model guessing about what is allowed.'"
+            },
+            {
+                question: "For few-shot prompting with classification tasks, what is recommended regarding the order of examples?",
+                options: [
+                    { text: "Always present examples of the same class consecutively.", value: "A" },
+                    { text: "The order does not matter at all.", value: "B" },
+                    { text: "Mix up the possible response classes in the few-shot examples.", value: "C" },
+                    { text: "Only use examples from the most common class.", value: "D" }
+                ],
+                correctAnswer: "C",
+                explanation: "'...when doing classification tasks, make sure you mix up the possible response classes in the few shot examples.'"
+            },
+            {
+                question: "What is a key recommendation for CoT (Chain of Thought) prompting regarding temperature setting?",
+                options: [
+                    { text: "Set the temperature to a high value for creativity.", value: "A" },
+                    { text: "Set the temperature to 0 (greedy decoding).", value: "B" },
+                    { text: "Temperature setting is irrelevant for CoT.", value: "C" },
+                    { text: "Alternate between high and low temperatures.", value: "D" }
+                ],
+                correctAnswer: "B",
+                explanation: "'For Col prompting, set the temperature to O.' This is because CoT is based on greedy decoding and usually aims for a single correct reasoning path."
+            },
+            {
+                question: "What is the primary reason for documenting prompt attempts in detail?",
+                options: [
+                    { text: "To make the prompt engineering process slower.", value: "A" },
+                    { text: "To have a record for revisiting work, testing on different model versions, and debugging.", value: "B" },
+                    { text: "To share prompts publicly without context.", value: "C" },
+                    { text: "It's a requirement only for code-related prompts.", value: "D" }
+                ],
+                correctAnswer: "B",
+                explanation: "Documentation helps to 'have a complete record when you inevitably have to revisit your prompting work... to test prompt performance on different versions of a model, and to help debug future errors.'"
+            },
+            {
+                question: "What does 'Tree of Thoughts (ToT)' generalize from CoT prompting?",
+                options: [
+                    { text: "It forces a single, linear path of reasoning.", value: "A" },
+                    { text: "It allows LLMs to explore multiple different reasoning paths simultaneously.", value: "B" },
+                    { text: "It eliminates the need for any intermediate steps.", value: "C" },
+                    { text: "It is only applicable to text summarization tasks.", value: "D" }
+                ],
+                correctAnswer: "B",
+                explanation: "ToT 'generalizes the concept of CoT prompting because it allows LLMs to explore multiple different reasoning paths simultaneously...'"
+            },
+            {
+                question: "What is a disadvantage of using Chain of Thought (CoT) prompting mentioned in the text?",
+                options:
+                [
+                    { text: "It reduces the interpretability of the model's response.", value: "A" },
+                    { text: "It makes the model less robust across different LLM versions.", value: "B" },
+                    { text: "The response includes reasoning, leading to more output tokens, higher cost, and longer time.", value: "C" },
+                    { text: "It only works well with fine-tuned models.", value: "D" }
+                ],
+                correctAnswer: "C",
+                explanation: "A disadvantage is: 'The LLM response includes the chain of thought reasoning, which means more output tokens, which means predictions cost more money and take longer.'"
             }
-            // Add up to 20 more questions here...
         ];
 
         // DOM Elements for Questions Part
@@ -2021,10 +2184,13 @@ September 2024 64`
         const currentQuestionNumberSpan = document.getElementById('current-question-number');
         const totalQuestionsSpan = document.getElementById('total-questions');
         const backToReadingButton = document.getElementById('back-to-reading');
+        const quizSummaryDiv = document.getElementById('quiz-summary');
+
 
         // Quiz state variables
         let shuffledQuestionIndices = [];
         let currentQuestionIndexInShuffledList = 0;
+        let correctAnswersCount = 0;
 
 
         // --- Reading Part Functions ---
@@ -2056,21 +2222,36 @@ September 2024 64`
         }
 
         function startQuiz() {
-            confirmationPopup.style.display = 'none'; // Hide confirmation popup
+            confirmationPopup.style.display = 'none';
+            correctAnswersCount = 0; // Reset score
+            quizSummaryDiv.style.display = 'none'; // Hide summary from previous attempts
+            quizSummaryDiv.innerHTML = '';
+
 
             if (allQuestions.length === 0) {
                 readingArea.style.display = 'none';
                 doneReadingButtonContainer.style.display = 'none';
                 questionsArea.style.display = 'block';
-                questionsArea.innerHTML = `<h2>No questions available at this time.</h2>
-                                           <button id="backToReadingNoQuestions">Back to Reading Material</button>`;
-                document.getElementById('backToReadingNoQuestions').addEventListener('click', backToReading);
+                // Hide main question UI elements if no questions
+                document.querySelector('#questions-area h2').style.display = 'none';
+                questionTextElement.style.display = 'none';
+                optionsContainer.style.display = 'none';
+                submitAnswerButton.style.display = 'none';
+                quizSummaryDiv.innerHTML = `<h2>No questions available at this time.</h2>`;
+                quizSummaryDiv.style.display = 'block';
                 return;
             }
+            
+            // Ensure main question UI elements are visible for a new quiz
+            document.querySelector('#questions-area h2').style.display = 'block';
+            questionTextElement.style.display = 'block';
+            optionsContainer.style.display = 'block';
+            submitAnswerButton.style.display = 'inline-block'; // Show submit button
 
             readingArea.style.display = 'none';
             doneReadingButtonContainer.style.display = 'none';
             questionsArea.style.display = 'block';
+
 
             shuffledQuestionIndices = Array.from({ length: allQuestions.length }, (_, i) => i);
             shuffleArray(shuffledQuestionIndices);
@@ -2081,6 +2262,11 @@ September 2024 64`
         }
 
         function displaySingleQuestion() {
+            quizSummaryDiv.style.display = 'none'; // Ensure summary is hidden when showing a question
+            questionTextElement.style.display = 'block';
+            optionsContainer.style.display = 'block';
+
+
             const currentQuestionDataIndex = shuffledQuestionIndices[currentQuestionIndexInShuffledList];
             const currentQuestion = allQuestions[currentQuestionDataIndex];
 
@@ -2106,8 +2292,8 @@ September 2024 64`
                 radio.name = 'answer';
                 radio.value = option.value;
                 
-                label.appendChild(radio); // Radio inside label for better clickability
-                label.appendChild(document.createTextNode(` ${option.text}`)); // Text node after radio
+                label.appendChild(radio);
+                label.appendChild(document.createTextNode(` ${option.text}`));
 
                 optionsContainer.appendChild(label);
             });
@@ -2144,12 +2330,13 @@ September 2024 64`
                 feedbackMessage.textContent = "Correct!";
                 feedbackMessage.style.color = 'green';
                 explanationDiv.innerHTML = currentQuestion.explanation ? `<p>${currentQuestion.explanation}</p>` : '';
+                correctAnswersCount++; // Increment score
             } else {
                 feedbackMessage.textContent = "Wrong!";
                 feedbackMessage.style.color = 'red';
                 explanationDiv.innerHTML = `<p>The correct answer was ${correctAnswerValue}.</p>${currentQuestion.explanation ? `<p>${currentQuestion.explanation}</p>` : ''}`;
                 
-                const selectedLabel = selectedOptionInput.closest('label'); // Get the label associated with the selected input
+                const selectedLabel = selectedOptionInput.closest('label');
                 if (selectedLabel) {
                     selectedLabel.classList.add('wrong-answer');
                 }
@@ -2162,7 +2349,6 @@ September 2024 64`
                 illustrationImg.style.display = 'none';
             }
 
-
             feedbackDiv.style.display = 'block';
             submitAnswerButton.style.display = 'none';
             nextQuestionButton.style.display = 'inline-block';
@@ -2173,36 +2359,51 @@ September 2024 64`
             if (currentQuestionIndexInShuffledList < allQuestions.length) {
                 displaySingleQuestion();
             } else {
-                questionTextElement.textContent = "Quiz Finished!";
-                optionsContainer.innerHTML = `<p>You have completed all ${allQuestions.length} questions.</p><p>You can now go back to the reading material if you wish.</p>`;
+                // Quiz finished - Display evaluation
+                questionTextElement.style.display = 'none';
+                optionsContainer.style.display = 'none';
                 submitAnswerButton.style.display = 'none';
                 nextQuestionButton.style.display = 'none';
                 feedbackDiv.style.display = 'none';
-                currentQuestionNumberSpan.textContent = allQuestions.length; // Show total as current
-                // backToReadingButton remains visible
+                document.querySelector('#questions-area h2').style.display = 'none'; // Hide "Question X of Y"
+
+
+                const totalAnswered = allQuestions.length;
+                const percentage = totalAnswered > 0 ? Math.round((correctAnswersCount / totalAnswered) * 100) : 0;
+
+                let summaryHTML = `<h2>Quiz Finished!</h2>`;
+                summaryHTML += `<p>You answered ${correctAnswersCount} out of ${totalAnswered} questions correctly (${percentage}%).</p>`;
+
+                if (percentage >= 80) {
+                    summaryHTML += `<p>Excellent work! You have a strong understanding of the material.</p>`;
+                } else if (percentage >= 50) {
+                    summaryHTML += `<p>Good effort! You might want to review some sections for a deeper understanding.</p>`;
+                } else {
+                    summaryHTML += `<p>Keep practicing! Reviewing the material and trying the quiz again will help improve your score.</p>`;
+                }
+                quizSummaryDiv.innerHTML = summaryHTML;
+                quizSummaryDiv.style.display = 'block';
+                backToReadingButton.style.display = 'inline-block'; // Ensure it's visible
             }
         }
 
         function backToReading() {
             questionsArea.style.display = 'none';
             readingArea.style.display = 'block';
+            quizSummaryDiv.style.display = 'none'; // Hide summary
             
-            // Reset quiz state (optional, if you want a full reset on going back)
-            // currentQuestionIndexInShuffledList = 0;
-            // shuffledQuestionIndices = [];
+            // Restore visibility of question elements for next quiz attempt
+            document.querySelector('#questions-area h2').style.display = 'block';
+            questionTextElement.style.display = 'block';
+            optionsContainer.style.display = 'block';
+            submitAnswerButton.style.display = 'inline-block'; // Ready for new quiz start
 
-            // Show reading part UI elements
             currentPageIndex = 0;
-            displayPage(); // This will also handle doneReadingButtonContainer visibility
-
-            // If quiz UI was modified for "No questions", restore it (simple way is to ensure displaySingleQuestion is called if quiz restarts)
-            // For this version, we just hide questionsArea. If startQuiz is called again, it will rebuild.
+            displayPage();
         }
 
 
         // --- Event Listeners ---
-
-        // Reading Part Listeners
         prevButton.addEventListener('click', () => {
             if (currentPageIndex > 0) {
                 currentPageIndex--;
@@ -2227,7 +2428,6 @@ September 2024 64`
             confirmationPopup.style.display = 'none';
         });
 
-        // Questions Part Listeners
         submitAnswerButton.addEventListener('click', handleSubmitAnswer);
         nextQuestionButton.addEventListener('click', handleNextQuestion);
         backToReadingButton.addEventListener('click', backToReading);
