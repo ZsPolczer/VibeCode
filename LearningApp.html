@@ -24,7 +24,9 @@ body {
 
 #reading-app-container,
 #questions-area,
-#strategy-review-menu /* Added menu container */ {
+#strategy-review-menu, /* Added menu container */
+#sampling-visualization-container /* Added visualization container */
+{
     background-color: #ffffff;
     padding: 25px 30px;
     border-radius: 12px;
@@ -98,6 +100,17 @@ body {
             color: #6c757d;
             font-size: 0.9em;
         }
+        /* Style for the container holding the "Done Reading" and "View Visualization" buttons */
+         #finish-reading-area {
+             display: flex; /* Use flex to align buttons */
+             justify-content: center; /* Center buttons horizontally */
+             align-items: center;
+             margin-top: 20px; /* Space above buttons */
+         }
+         #finish-reading-area button {
+             margin: 0 10px; /* Space between buttons */
+         }
+
 
         /* ----- Questions Area Specifics ----- */
         #question-text-container {
@@ -235,6 +248,58 @@ body {
              margin-bottom: 5px;
          }
 
+        /* ----- Sampling Visualization Styles ----- */
+        #sampling-visualization-container h2 {
+             color: #007bff;
+             margin-bottom: 20px;
+         }
+         .control-group {
+             margin-bottom: 20px;
+             padding: 15px;
+             border: 1px solid #ced4da;
+             border-radius: 8px;
+             background-color: #f8f9fa;
+         }
+         .control-group label {
+             display: block;
+             margin-bottom: 10px;
+             font-weight: bold;
+             color: #343a40;
+         }
+          .control-group input[type="range"] {
+             width: 80%; /* Adjust slider width */
+             margin-right: 10px;
+             vertical-align: middle; /* Align with number input */
+         }
+          .control-group input[type="number"] {
+              width: 60px; /* Adjust number input width */
+              padding: 5px;
+              border: 1px solid #ced4da;
+              border-radius: 4px;
+              text-align: center;
+              vertical-align: middle; /* Align with slider */
+          }
+
+         #sampling-explanation {
+             margin-top: 25px;
+             padding: 20px;
+             border: 1px solid #dee2e6;
+             border-left: 5px solid #28a745; /* Accent border */
+             background-color: #e9ecef;
+             border-radius: 8px;
+             font-size: 1.1em;
+             line-height: 1.6;
+             color: #343a40;
+         }
+
+         #back-to-reading-vis {
+             margin-top: 20px;
+             background-color: #6c757d;
+         }
+          #back-to-reading-vis:hover {
+             background-color: #545b62;
+         }
+
 
         /* ----- Animations for Question Transition ----- */
         .question-transition-out {
@@ -268,9 +333,12 @@ body {
             <button id="prev-page">Previous Page</button>
             <button id="next-page">Next Page</button>
         </div>
+         <!-- Consolidated finish reading/visualization buttons here -->
         <div id="finish-reading-area" style="display: none;">
             <button id="done-reading">I'm Done Reading</button>
+            <button id="view-sampling-vis-button" style="display: none;">View Sampling Visualization</button>
         </div>
+         <!------------------------------------------------------>
     </div>
 
     <div id="questions-area" style="display: none;">
@@ -303,6 +371,40 @@ body {
          <button id="back-to-summary">Back to Summary</button>
      </div>
      <!---------------------------->
+
+     <!-- New Sampling Visualization -->
+     <div id="sampling-visualization-container" style="display: none;">
+         <h2>Sampling Control Visualization</h2>
+
+         <div class="control-group">
+             <label for="temp-slider">Temperature: <span id="temp-value">0.7</span></label>
+             <input type="range" id="temp-slider" min="0" max="2" value="0.7" step="0.05">
+             <input type="number" id="temp-number" min="0" max="2" value="0.7" step="0.05">
+         </div>
+
+         <div class="control-group">
+             <label for="topk-slider">Top-K: <span id="topk-value">40</span></label>
+             <input type="range" id="topk-slider" min="1" max="100" value="40" step="1">
+             <input type="number" id="topk-number" min="1" max="100" value="40" step="1">
+         </div>
+
+         <div class="control-group">
+             <label for="topp-slider">Top-P: <span id="topp-value">0.95</span></label>
+             <input type="range" id="topp-slider" min="0" max="1" value="0.95" step="0.01">
+             <input type="number" id="topp-number" min="0" max="1" value="0.95" step="0.01">
+         </div>
+
+         <div id="sampling-explanation">
+             <!-- Explanation text will be generated here by JS -->
+         </div>
+
+         <!-- Optional: Add a simple conceptual visual here later if desired -->
+         <!-- <div id="conceptual-visual"></div> -->
+
+
+         <button id="back-to-reading-vis">Back to Reading Material</button>
+     </div>
+     <!--------------------------------->
 
 
     <div id="confirmation-popup">
@@ -1534,22 +1636,6 @@ Temperature 0.1 Token Limit 1024
 Top-K N/A Top-P 1
 Prompt Translate the below Bash code to a Python snippet.
 <code class="language-bash">
-#!/bin/bash
-echo "Enter the folder name: "
-read folder_name
-if [ ! -d "$folder_name" ]; then
-    echo "Folder does not exist."
-    exit 1
-fi
-for file in "$folder_name"/*; do
-    if [ -f "$file" ]; then
-        new_file_path="$folder_name/draft_$(basename "$file")"
-        mv "$file" "$new_file_path"
-    fi
-done
-echo "Files renamed successfully."
-</code>
-Output <code class="language-python">
 import os
 import shutil
 # Get the folder name from the user
@@ -1599,46 +1685,6 @@ import os
 import shutil
 folder_name = input("Enter the folder name: ")
 prefix = input("Enter the string to prepend to the filename: ")
-text = toUpperCase(prefix) # This line has the bug
-if not os.path.isdir(folder_name) :
-    print("Folder does not exist.")
-    exit(1)
-# Iterate over the files in the directory
-for filename in os.listdir(folder_name):
-    original_file_path = os.path.join(folder_name, filename)
-    if os.path.isfile(original_file_path):
-        new_filename_with_prefix = f"{text}_{filename}"
-        new_path_with_prefix = os.path.join(folder_name, new_path_with_prefix)
-        shutil.move(original_file_path, new_path_with_prefix)
-print("Files renamed successfully.")
-Snippet 3. A broken Python script
-</code></pre>
-Doh! That looks like a bug:
-<pre><code>
-Unset
-The below Python code gives an error:
-Traceback (most recent call last):
-File “/Users/leeboonstra/Documents/test_folder/rename_files.py”, line 7,
-in &lt;module&gt;
-text = toUpperCase(prefix)
-NameError: name ‘toUpperCase’ is not defined
-Snippet 4. I broke the Python code
-</code></pre>
-September 2024 49
-
-Prompt Engineering
-
-Let’s see if we can ask the large language model to debug and review code. Have a look into
-Table 19:
-<pre>
-Name 1_python_debug_code
-Goal Write a prompt to debug and review Python code.
-Model gemini-pro
-Temperature 0.1 Token Limit 1024
-Top-K N/A Top-P 1
-Prompt The below Python code gives an error:
-Traceback (most recent call last):
-File "/Users/leeboonstra/Documents/test_folder/rename_files.py", line 7, in &lt;module&gt;
 text = prefix.upper() # Corrected line
 # Check if the folder exists
 if not os.path.isdir(folder_name):
@@ -1799,8 +1845,7 @@ Generate a 3 paragraph blog post about the top 5 video game consoles.
 The blog post should be informative and engaging, and it should be
 written in a conversational style.
 DO NOT:
-Generate a 1 paragraph blog post about the top 5 video game consoles.
-Do not list video game names.
+Generate a blog post about video game consoles.
 
 Use Instructions over Constraints
 
@@ -1958,7 +2003,7 @@ and what did not.
 Prompt outputs can differ across models, across sampling settings, and even across different
 versions of the same model. Moreover, even across identical prompts to the same model,
 small differences in output sentence formatting and word choice can occur. (For example, as
-mentioned previously, if two tokens have the same predicted probability, ties may be broken
+mentioned previously, if two tokens have the same highest predicted probability, ties may be broken
 randomly. This can then impact subsequent predicted tokens.).
 We recommend creating a Google Sheet with Table 21 as a template. The advantages of
 this approach are that you have a complete record when you inevitably have to revisit your
@@ -2028,6 +2073,7 @@ September 2024 64`
         const nextButton = document.getElementById('next-page');
         const doneReadingButtonContainer = document.getElementById('finish-reading-area');
         const doneReadingButton = document.getElementById('done-reading');
+         const viewSamplingVisButton = document.getElementById('view-sampling-vis-button'); // Get the new button
         const confirmationPopup = document.getElementById('confirmation-popup');
         const proceedButton = document.getElementById('proceed-to-questions');
         const stayButton = document.getElementById('stay-on-page');
@@ -2280,6 +2326,17 @@ September 2024 64`
         const strategiesList = document.getElementById('strategies-list');
         const backToSummaryButton = document.getElementById('back-to-summary');
 
+        // DOM Elements for Sampling Visualization
+        const samplingVisualizationContainer = document.getElementById('sampling-visualization-container');
+        const tempSlider = document.getElementById('temp-slider');
+        const tempNumber = document.getElementById('temp-number');
+        const topkSlider = document.getElementById('topk-slider');
+        const topkNumber = document.getElementById('topk-number');
+        const toppSlider = document.getElementById('topp-slider');
+        const toppNumber = document.getElementById('topp-number');
+        const samplingExplanation = document.getElementById('sampling-explanation');
+        const backToReadingVisButton = document.getElementById('back-to-reading-vis');
+
 
         // Quiz state variables
         let shuffledQuestionIndices = [];
@@ -2290,8 +2347,8 @@ September 2024 64`
         
         // Strategy Summary Data (Based on the article's Summary section)
          const promptingStrategiesSummary = [
-             { name: "Zero Prompting", summary: "This is the most basic way to prompt an AI. You simply give it a task or ask a question without providing any examples of how you want the output to look. The AI relies entirely on its training data to figure out how to respond." },
-             { name: "Few Shot Prompting", summary: "With these techniques, you include one (one-shot) or a few (few-shot) examples directly in your prompt before asking the actual question. These examples show the AI the desired format, style, or type of output you expect, helping it follow a specific pattern." },
+             { name: "Zero-Shot Prompting", summary: "This is the most basic way to prompt an AI. You simply give it a task or ask a question without providing any examples of how you want the output to look. The AI relies entirely on its training data to figure out how to respond." },
+             { name: "One-Shot & Few-Shot Prompting", summary: "With these techniques, you include one (one-shot) or a few (few-shot) examples directly in your prompt before asking the actual question. These examples show the AI the desired format, style, or type of output you expect, helping it follow a specific pattern." },
              { name: "System Prompting", summary: "You give the AI high-level instructions that set its overall goal or behavior for a task or conversation. This defines the main job the AI should be doing, like always responding in a specific format (e.g., JSON) or following certain rules." },
              { name: "Role Prompting", summary: "This involves telling the AI to act like a particular person or character (like a doctor, teacher, or comedian). The AI will then try to generate responses using the tone, style, and knowledge that character would typically have. This helps frame the AI's output personality." },
              { name: "Contextual Prompting", summary: "This is about providing the AI with specific background information or details that are important for the current task or question. This context helps the AI understand the specific situation and tailor its answer more accurately, especially in ongoing interactions." },
@@ -2320,7 +2377,12 @@ September 2024 64`
 
             prevButton.disabled = currentPageIndex === 0;
             nextButton.style.display = currentPageIndex === pages.length - 1 ? 'none' : 'inline-block';
-            doneReadingButtonContainer.style.display = currentPageIndex === pages.length - 1 ? 'block' : 'none';
+
+            // Only show the finish reading button container on the last page
+            doneReadingButtonContainer.style.display = currentPageIndex === pages.length - 1 ? 'flex' : 'none'; // Use flex for button container
+            // Hide the visualization button by default unless on the last page
+             viewSamplingVisButton.style.display = currentPageIndex === pages.length - 1 ? 'inline-block' : 'none';
+
         }
 
         // --- Quiz Functions ---
@@ -2341,6 +2403,8 @@ September 2024 64`
             quizSummaryDiv.style.display = 'none'; // Hide summary from previous attempts
             quizSummaryDiv.innerHTML = '';
              strategyReviewMenu.style.display = 'none'; // Hide strategies menu
+             samplingVisualizationContainer.style.display = 'none'; // Hide visualization
+
 
             if (allQuestions.length === 0) {
                 readingArea.style.display = 'none';
@@ -2363,7 +2427,7 @@ September 2024 64`
             submitAnswerButton.style.display = 'inline-block'; // Show submit button
 
             readingArea.style.display = 'none';
-            doneReadingButtonContainer.style.display = 'none';
+            doneReadingButtonContainer.style.display = 'none'; // Hide reading buttons when in quiz
             questionsArea.style.display = 'block';
 
 
@@ -2402,6 +2466,7 @@ September 2024 64`
 
             quizSummaryDiv.style.display = 'none';
             strategyReviewMenu.style.display = 'none'; // Ensure strategies menu is hidden
+            samplingVisualizationContainer.style.display = 'none'; // Ensure visualization is hidden
             questionTextElement.style.display = 'block'; // Ensure these are block for animation
             optionsContainer.style.display = 'block'; // Ensure these are block for animation
 
@@ -2643,6 +2708,7 @@ September 2024 64`
             quizSummaryDiv.style.display = 'none';
             quizSummaryDiv.classList.remove('question-transition-in');
             strategyReviewMenu.style.display = 'none'; // Hide strategies menu
+            samplingVisualizationContainer.style.display = 'none'; // Hide visualization
 
 
             document.querySelector('#questions-area h2').style.display = 'block';
@@ -2662,6 +2728,8 @@ September 2024 64`
         function showStrategyReviewMenu() {
             questionsArea.style.display = 'none';
             quizSummaryDiv.style.display = 'none'; // Hide summary
+             samplingVisualizationContainer.style.display = 'none'; // Hide visualization
+
             strategyReviewMenu.style.display = 'block'; // Show the strategies menu
 
             strategiesList.innerHTML = ''; // Clear previous list items
@@ -2676,9 +2744,83 @@ September 2024 64`
         // New function to go back to the quiz summary from the strategies menu
         function backToQuizSummary() {
              strategyReviewMenu.style.display = 'none'; // Hide strategies menu
+             samplingVisualizationContainer.style.display = 'none'; // Hide visualization
+
              questionsArea.style.display = 'block'; // Show questions area (which contains the summary)
              quizSummaryDiv.style.display = 'block'; // Show the summary itself
         }
+
+         // New function to show the sampling visualization menu
+         function showSamplingVisualization() {
+             readingArea.style.display = 'none'; // Hide reading area
+             questionsArea.style.display = 'none'; // Hide questions area
+             strategyReviewMenu.style.display = 'none'; // Hide strategies menu
+
+             samplingVisualizationContainer.style.display = 'block'; // Show visualization container
+
+             // Set initial values and update explanation
+             updateSamplingVisualization();
+         }
+
+         // New function to update the sampling visualization explanation
+         function updateSamplingVisualization() {
+             const temp = parseFloat(tempSlider.value).toFixed(2);
+             const topk = parseInt(topkSlider.value);
+             const topp = parseFloat(toppSlider.value).toFixed(2);
+
+             tempNumber.value = temp;
+             topkNumber.value = topk;
+             toppNumber.value = topp;
+
+             let explanation = `With Temperature set to <strong>${temp}</strong>, Top-K to <strong>${topk}</strong>, and Top-P to <strong>${topp}</strong>:<br><br>`;
+
+             if (temp == 0) {
+                 explanation += `<strong>Temperature (0):</strong> The model will always choose the single token with the highest predicted probability. This results in highly deterministic and predictable output. Top-K and Top-P settings become irrelevant at this temperature.`;
+             } else if (temp >= 1.5) { // High temperature
+                 explanation += `<strong>Temperature (${temp}):</strong> With a high temperature, the model makes more random choices. The probabilities of less likely tokens are increased, leading to highly diverse, creative, and potentially less coherent output. The effect of Top-K and Top-P is lessened as more tokens become almost equally likely.<br>`;
+                  if (topk < 100) { // Assuming 100 is max K for this example
+                      explanation += `<strong>Top-K (${topk}):</strong> Only the top ${topk} most probable tokens are considered before temperature is applied.<br>`;
+                  } else {
+                      explanation += `<strong>Top-K (High):</strong> Almost all tokens are considered.<br>`;
+                  }
+                   if (topp < 1) {
+                      explanation += `<strong>Top-P (${topp}):</strong> Tokens are selected from the smallest set whose cumulative probability exceeds ${topp} before temperature is applied.<br>`;
+                  } else {
+                      explanation += `<strong>Top-P (1.0):</strong> All tokens are considered.<br>`;
+                   }
+
+             }
+             else { // Moderate temperature
+                  explanation += `<strong>Temperature (${temp}):</strong> This setting introduces some randomness, making the output less predictable than Temperature 0, but generally more focused than very high temperatures. It influences how the probabilities of the selected tokens are considered.<br>`;
+                  if (topk < 100) {
+                       explanation += `<strong>Top-K (${topk}):</strong> The model first filters to consider only the top ${topk} most probable tokens.<br>`;
+                   } else {
+                       explanation += `<strong>Top-K (High):</strong> Almost all tokens are considered before other sampling is applied.<br>`;
+                   }
+                    if (topp < 1) {
+                       explanation += `<strong>Top-P (${topp}):</strong> Then, from the remaining tokens (if Top-K was applied), tokens are selected from the smallest set whose cumulative probability exceeds ${topp}. Temperature is applied after these steps.<br>`;
+                   } else {
+                       explanation += `<strong>Top-P (1.0):</strong> If Top-K was applied, all tokens within the top K are considered before temperature. If Top-K was not limiting, all tokens with >0 probability are considered before temperature.<br>`;
+                    }
+             }
+
+             if (topk == 1 && temp != 0) {
+                  explanation += `<strong>Note:</strong> When Top-K is 1 and Temperature is not 0, the result is similar to Temperature 0 – only the single most probable token (which is the only one in the Top-K set) is effectively chosen, making the output deterministic within that single token choice.`;
+             } else if (topp == 0 && temp != 0) { // Assuming Top-P 0 means only the single highest prob token
+                  explanation += `<strong>Note:</strong> When Top-P is 0 (or very low) and Temperature is not 0, this often means only the single most probable token is considered, similar to Temperature 0.`;
+             }
+
+
+             samplingExplanation.innerHTML = explanation;
+         }
+
+         // New function to go back from visualization to reading
+         function backFromVisualization() {
+             samplingVisualizationContainer.style.display = 'none'; // Hide visualization
+             readingArea.style.display = 'block'; // Show reading area
+             // Ensure the last page is displayed when returning
+             displayPage();
+         }
 
 
         function backToReading() {
@@ -2686,7 +2828,8 @@ September 2024 64`
             readingArea.style.display = 'block';
             quizSummaryDiv.style.display = 'none'; // Hide summary
             strategyReviewMenu.style.display = 'none'; // Hide strategies menu
-            
+            samplingVisualizationContainer.style.display = 'none'; // Hide visualization
+
             // Restore visibility of question elements for next quiz attempt
             document.querySelector('#questions-area h2').style.display = 'block';
             questionTextElement.style.display = 'block';
@@ -2726,8 +2869,36 @@ September 2024 64`
         submitAnswerButton.addEventListener('click', handleSubmitAnswer);
         nextQuestionButton.addEventListener('click', handleNextQuestion);
         backToReadingButton.addEventListener('click', backToReading);
+
         // Event listener for the "Back to Summary" button in the strategies menu
         backToSummaryButton.addEventListener('click', backToQuizSummary);
+
+        // Event listener for the new "View Sampling Visualization" button
+         viewSamplingVisButton.addEventListener('click', showSamplingVisualization);
+
+        // Event listeners for the sliders and number inputs to update the visualization explanation
+        tempSlider.addEventListener('input', updateSamplingVisualization);
+        tempNumber.addEventListener('input', function() {
+             tempSlider.value = this.value; // Sync slider to number input
+             updateSamplingVisualization();
+        });
+
+        topkSlider.addEventListener('input', updateSamplingVisualization);
+         topkNumber.addEventListener('input', function() {
+             topkSlider.value = this.value; // Sync slider to number input
+             updateSamplingVisualization();
+         });
+
+
+        toppSlider.addEventListener('input', updateSamplingVisualization);
+         toppNumber.addEventListener('input', function() {
+             toppSlider.value = this.value; // Sync slider to number input
+             updateSamplingVisualization();
+         });
+
+
+        // Event listener for the "Back to Reading" button in the visualization menu
+         backToReadingVisButton.addEventListener('click', backFromVisualization);
 
 
         // Initial page load for reading material
