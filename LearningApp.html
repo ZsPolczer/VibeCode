@@ -22,7 +22,9 @@ body {
     min-height: 100vh; /* Ensure body takes full viewport height */
 }
 
-#reading-app-container, #questions-area {
+#reading-app-container,
+#questions-area,
+#strategy-review-menu /* Added menu container */ {
     background-color: #ffffff;
     padding: 25px 30px;
     border-radius: 12px;
@@ -208,6 +210,32 @@ body {
             line-height: 1.6;
         }
 
+        /* ----- Strategies Review Menu Styles ----- */
+        #strategy-review-menu h2 {
+            color: #007bff;
+            margin-bottom: 20px;
+        }
+        #strategy-review-menu ul {
+            list-style: none;
+            padding: 0;
+            margin: 0 0 20px 0; /* Space before back button */
+        }
+        #strategy-review-menu li {
+            background-color: #e9ecef; /* Light background for list items */
+            margin-bottom: 15px;
+            padding: 15px;
+            border-left: 4px solid #007bff; /* Accent border */
+            border-radius: 4px;
+            font-size: 1em;
+        }
+         #strategy-review-menu li strong {
+             color: #343a40;
+             font-size: 1.1em;
+             display: block; /* Make strategy name a block for spacing */
+             margin-bottom: 5px;
+         }
+
+
         /* ----- Animations for Question Transition ----- */
         .question-transition-out {
             animation: fadeOut 0.3s forwards;
@@ -229,6 +257,9 @@ body {
 <body>
     <div id="reading-app-container">
         <h1>Reading Material</h1>
+        <!-- ADDED LINK HERE -->
+        <p>Source Article: <a href="https://www.kaggle.com/whitepaper-prompt-engineering" target="_blank">Prompt Engineering Whitepaper</a></p>
+        <!--------------------->
         <div id="text-container">
             <!-- Text content will be loaded here -->
         </div>
@@ -262,6 +293,17 @@ body {
         <button id="next-question" style="display: none;">Next Question</button>
         <button id="back-to-reading" style="margin-top: 20px;">Back to Reading Material</button>
     </div>
+
+     <!-- New Strategies Review Menu -->
+     <div id="strategy-review-menu" style="display: none;">
+         <h2>Prompting Strategies Summary</h2>
+         <ul id="strategies-list">
+             <!-- Strategy summaries will be populated here by JS -->
+         </ul>
+         <button id="back-to-summary">Back to Summary</button>
+     </div>
+     <!---------------------------->
+
 
     <div id="confirmation-popup">
         <p>Ready for Questions?</p>
@@ -990,6 +1032,7 @@ the output.
 Prompt When I was 3 years old, my partner was 3 times my age. Now,
 I am 20 years old. How old is my partner? Let's think step
 by step.
+A:
 Output 1. Let’s assume my current age is “x” years.
 When I was 3 years old, my age was 3 years.
 My partner’s age at that time was 3 times my age, which means my partner’s
@@ -1133,7 +1176,7 @@ described as interesting but not critical. The email sender even suggests that
 the website owner can leave the bug in place.
 3. Lack of personal impact: The email does not indicate any direct or
 personal impact on the website owner. It simply mentions that the sender
-enjoys reading the website.
+enjoy reading the website.
 Continues next page...
 
 September 2024 34
@@ -1213,7 +1256,7 @@ ReAct (reason & act)
 Reason and act (ReAct) [10]"* prompting is a paradigm for enabling LLMs to solve complex
 tasks using natural language reasoning combined with external tools (search, code
 interpreter etc.) allowing the LLM to perform certain actions, such as interacting with external
-APIs to retrieve information which is a first step towards agent modeling.
+API to retrieve information which is a first step towards agent modeling.
 
 ReAct mimics how humans operate in the real world, as we reason verbally and can
 take actions to gain information. ReAct performs well against other prompt engineering
@@ -1225,7 +1268,7 @@ actions in the plan and observes the results. The LLM then uses the observations
 its reasoning and generate a new plan of action. This process continues until the LLM
 reaches a solution to the problem.
 
-September 2024 37 
+September 2024 37
 
 Prompt Engineering
 
@@ -1565,7 +1608,7 @@ for filename in os.listdir(folder_name):
     original_file_path = os.path.join(folder_name, filename)
     if os.path.isfile(original_file_path):
         new_filename_with_prefix = f"{text}_{filename}"
-        new_path_with_prefix = os.path.join(folder_name, new_filename_with_prefix)
+        new_path_with_prefix = os.path.join(folder_name, new_path_with_prefix)
         shutil.move(original_file_path, new_path_with_prefix)
 print("Files renamed successfully.")
 Snippet 3. A broken Python script
@@ -1596,16 +1639,7 @@ Top-K N/A Top-P 1
 Prompt The below Python code gives an error:
 Traceback (most recent call last):
 File "/Users/leeboonstra/Documents/test_folder/rename_files.py", line 7, in &lt;module&gt;
-text = toUpperCase(prefix)
-NameError: name ‘toUpperCase’ is not defined
-Debug what's wrong and explain how I can improve the code.
-<code class="language-python">
-import os
-import shutil
-# Get the folder name from the user
-folder_name = input("Enter the folder name: ")
-prefix = input("Enter the string to prepend to the filename: ")
-text = toUpperCase(prefix) # Error is here
+text = prefix.upper() # Corrected line
 # Check if the folder exists
 if not os.path.isdir(folder_name):
     print("Folder does not exist.")
@@ -1686,16 +1720,12 @@ for current_filename in os.listdir(folder_name):
         new_full_filename = f"{prefix_to_add.upper()}_{name_part}{ext}"
         new_full_path = os.path.join(folder_name, new_full_filename)
         try:
-            shutil.move(original_file_path, new_full_path)
+            shutil.move(original_file_path, new_full_path);
         except Exception as e:
-            print(f"An error occurred while moving the file {current_filename}: {e}")
+        }
 # Print a success message
-print("Files renamed successfully.")
+print("Files renamed successfully.");
 </code>
-These improvements make the code more robust and flexible while also making
-it easier to read and understand... (The response was truncated because
-it has reached the token limit. Try to increase the token limit if you need a
-longer response.)
 Table 19. A prompt for debugging and reviewing Python code
 </pre>
 That’s great. Not only did it tell me how to solve the problem, it also figured out that my code
@@ -1769,7 +1799,8 @@ Generate a 3 paragraph blog post about the top 5 video game consoles.
 The blog post should be informative and engaging, and it should be
 written in a conversational style.
 DO NOT:
-Generate a blog post about video game consoles.
+Generate a 1 paragraph blog post about the top 5 video game consoles.
+Do not list video game names.
 
 Use Instructions over Constraints
 
@@ -2009,12 +2040,12 @@ September 2024 64`
     {
         question: "According to the Introduction, what is a text prompt in the context of a large language model?",
         options: [
-            { text: "It's the final output generated by the model.", value: "A" },
-            { text: "It's the input the model uses to predict a specific output.", value: "B" },
+            { text: "It's the input the model uses to predict a specific output.", value: "A" },
+            { text: "It's the final output generated by the model.", value: "B" },
             { text: "It's a configuration setting like temperature.", value: "C" },
             { text: "It's the training data for the model.", value: "D" }
         ],
-        correctAnswer: "B",
+        correctAnswer: "A", // Updated for testing A
         explanation: "Think of a prompt as your instruction or starting point for the AI. The introduction clarifies that a text prompt is essentially the input you give the model so it knows what kind of output you're looking for."
     },
     {
@@ -2033,32 +2064,32 @@ September 2024 64`
         options: [
             { text: "Providing many examples to the model.", value: "A" },
             { text: "Providing a single example to the model.", value: "B" },
-            { text: "Providing only a task description and some starting text, with no examples.", value: "C" },
-            { text: "A technique that always results in zero errors.", value: "D" }
+            { text: "A technique that always results in zero errors.", value: "C" },
+            { text: "Providing only a task description and some starting text, with no examples.", value: "D" } // Updated option order for testing D
         ],
-        correctAnswer: "C",
+        correctAnswer: "D", // Updated for testing D
         explanation: "Zero-shot means you're asking the model to perform a task 'from scratch,' without showing it any examples first. The reading material points out that 'zero-shot' literally means 'no examples' are given in the prompt, just the task itself."
     },
     {
         question: "What is the main purpose of 'Role Prompting'?",
         options: [
-            { text: "To set the overall context and purpose for the language model.", value: "A" },
+            { text: "To assign a specific character or identity for the language model to adopt.", value: "A" }, // Updated for testing A
             { text: "To provide specific details or background information relevant to the current task.", value: "B" },
-            { text: "To assign a specific character or identity for the language model to adopt.", value: "C" },
+            { text: "To set the overall context and purpose for the language model.", value: "C" },
             { text: "To control the maximum number of tokens in the output.", value: "D" }
         ],
-        correctAnswer: "C",
+        correctAnswer: "A", // Updated for testing A
         explanation: "Role prompting is like giving the AI a character to play! The goal is to have it adopt a specific persona or identity, which helps ensure its responses are consistent in tone and style with that role."
     },
     {
         question: "Which prompting technique involves the LLM generating intermediate reasoning steps to improve accuracy?",
         options: [
-            { text: "Step-back prompting", value: "A" },
-            { text: "Chain of Thought (CoT) prompting", value: "B" },
+            { text: "Chain of Thought (CoT) prompting", value: "A" }, // Updated for testing A
+            { text: "Step-back prompting", value: "B" },
             { text: "Self-consistency", value: "C" },
             { text: "ReAct prompting", value: "D" }
         ],
-        correctAnswer: "B",
+        correctAnswer: "A", // Updated for testing A
         explanation: "Chain of Thought (CoT) prompting is the one that encourages the AI to 'think out loud' by generating the steps it takes to reach an answer. This step-by-step reasoning can lead to more accurate results."
     },
     {
@@ -2066,32 +2097,32 @@ September 2024 64`
         options: [
             { text: "The maximum number of tokens in the response.", value: "A" },
             { text: "The selection of the top K most likely tokens.", value: "B" },
-            { text: "The selection of top tokens whose cumulative probability does not exceed a certain value (P).", value: "C" },
-            { text: "The temperature of the model's output.", value: "D" }
+            { text: "The temperature of the model's output.", value: "C" },
+            { text: "The selection of top tokens whose cumulative probability does not exceed a certain value (P).", value: "D" } // Updated for testing D
         ],
-        correctAnswer: "C",
+        correctAnswer: "D", // Updated for testing D
         explanation: "Top-P (or nucleus sampling) is a clever way to control the pool of words the model considers. Instead of a fixed number (like Top-K), it picks from the most likely words until their combined probability reaches a set threshold 'P'."
     },
     {
         question: "What is a primary benefit of 'System Prompting' when requesting JSON output?",
         options: [
             { text: "It makes the output more creative.", value: "A" },
-            { text: "It forces the model to create a structure and can limit hallucinations.", value: "B" },
+            { text: "It automatically translates the output to multiple languages.", value: "B" },
             { text: "It significantly reduces the computational cost.", value: "C" },
-            { text: "It automatically translates the output to multiple languages.", value: "D" }
+            { text: "It forces the model to create a structure and can limit hallucinations.", value: "D" } // Updated for testing D
         ],
-        correctAnswer: "B",
+        correctAnswer: "D", // Updated for testing D
         explanation: "When you use a system prompt to ask for JSON, you're giving the model a clear blueprint for its response. This helps keep it on track, create the desired structure, and reduce the chances of it making things up (hallucinating)."
     },
     {
         question: "What is 'Step-back' prompting designed to do?",
         options: [
-            { text: "Make the LLM answer questions more quickly.", value: "A" },
-            { text: "Have the LLM consider a general question first to activate relevant background knowledge.", value: "B" },
+            { text: "Have the LLM consider a general question first to activate relevant background knowledge.", value: "A" }, // Updated for testing A
+            { text: "Make the LLM answer questions more quickly.", value: "B" },
             { text: "Force the LLM to only use its most recent training data.", value: "C" },
             { text: "Reduce the number of examples needed for few-shot prompting.", value: "D" }
         ],
-        correctAnswer: "B",
+        correctAnswer: "A", // Updated for testing A
         explanation: "Step-back prompting is like taking a moment to think about the bigger picture first. By prompting the AI with a more general, related question initially, it helps activate relevant knowledge before tackling the specific problem."
     },
     {
@@ -2152,12 +2183,12 @@ September 2024 64`
     {
         question: "When designing prompts, what does 'Design with simplicity' primarily mean?",
         options: [
-            { text: "Using highly technical jargon to be precise.", value: "A" },
-            { text: "Making prompts concise, clear, and easy to understand.", value: "B" },
+            { text: "Making prompts concise, clear, and easy to understand.", value: "A" }, // Updated for testing A
+            { text: "Using highly technical jargon to be precise.", value: "B" },
             { text: "Including as much information as possible, even if irrelevant.", value: "C" },
             { text: "Only using single-word prompts.", value: "D" }
         ],
-        correctAnswer: "B",
+        correctAnswer: "A", // Updated for testing A
         explanation: "Simplicity in prompt design is about clarity. Your prompts should be straightforward and easy for both you and the AI to understand, avoiding unnecessary complexity or confusing language."
     },
     {
@@ -2197,11 +2228,11 @@ September 2024 64`
         question: "What is the primary reason for documenting prompt attempts in detail?",
         options: [
             { text: "To make the prompt engineering process slower.", value: "A" },
-            { text: "To have a record for revisiting work, testing on different model versions, and debugging.", value: "B" },
+            { text: "To have a record for revisiting work, testing on different model versions, and debugging.", value: "B" }, // Updated for testing B
             { text: "To share prompts publicly without context.", value: "C" },
             { text: "It's a requirement only for code-related prompts.", value: "D" }
         ],
-        correctAnswer: "B",
+        correctAnswer: "B", // Updated for testing B
         explanation: "Keeping good notes is crucial! Documenting your prompt experiments helps you learn what works, track changes, test with new model versions, and makes debugging much easier down the line."
     },
     {
@@ -2244,6 +2275,11 @@ September 2024 64`
         const backToReadingButton = document.getElementById('back-to-reading');
         const quizSummaryDiv = document.getElementById('quiz-summary');
 
+        // DOM Elements for Strategies Review Menu
+        const strategyReviewMenu = document.getElementById('strategy-review-menu');
+        const strategiesList = document.getElementById('strategies-list');
+        const backToSummaryButton = document.getElementById('back-to-summary');
+
 
         // Quiz state variables
         let shuffledQuestionIndices = [];
@@ -2252,6 +2288,20 @@ September 2024 64`
         let isRedoMode = false;
         let incorrectQuestionIndices = []; // Will store original indices of wrong questions
         
+        // Strategy Summary Data (Based on the article's Summary section)
+         const promptingStrategiesSummary = [
+             { name: "Zero Prompting", summary: "This is the most basic way to prompt an AI. You simply give it a task or ask a question without providing any examples of how you want the output to look. The AI relies entirely on its training data to figure out how to respond." },
+             { name: "Few Shot Prompting", summary: "With these techniques, you include one (one-shot) or a few (few-shot) examples directly in your prompt before asking the actual question. These examples show the AI the desired format, style, or type of output you expect, helping it follow a specific pattern." },
+             { name: "System Prompting", summary: "You give the AI high-level instructions that set its overall goal or behavior for a task or conversation. This defines the main job the AI should be doing, like always responding in a specific format (e.g., JSON) or following certain rules." },
+             { name: "Role Prompting", summary: "This involves telling the AI to act like a particular person or character (like a doctor, teacher, or comedian). The AI will then try to generate responses using the tone, style, and knowledge that character would typically have. This helps frame the AI's output personality." },
+             { name: "Contextual Prompting", summary: "This is about providing the AI with specific background information or details that are important for the current task or question. This context helps the AI understand the specific situation and tailor its answer more accurately, especially in ongoing interactions." },
+             { name: "Step-back Prompting", summary: "Instead of asking a difficult specific question directly, you first prompt the AI with a simpler, more general question related to the topic. The AI answers the general question, and you then provide both the original specific problem and the AI's general answer as context for a second prompt, which helps the AI solve the specific problem better." },
+             { name: "Chain of Thought (CoT)", summary: "This technique encourages the AI to show its step-by-step thinking process before arriving at the final answer. By adding phrases like 'Let's think step by step' to your prompt, you guide the AI to generate intermediate reasoning steps. This improves accuracy for complex tasks and makes the AI's logic more understandable." },
+             { name: "Self Consistency", summary: "This technique involves prompting the AI for the same question multiple times, often using different settings to get diverse reasoning paths and answers. You then compare the final answers from all attempts and choose the one that appears most often (a 'majority vote'). This 'consensus' approach helps improve the reliability and accuracy of the final result, especially for tasks that can be tricky for the AI." },
+             { name: "Tree of Thoughts (ToT)", summary: "This is an advanced reasoning technique that builds on Chain of Thought. Instead of following just one possible linear path of reasoning, ToT allows the AI to explore and manage multiple different reasoning paths simultaneously, much like the branches of a tree. This is particularly powerful for tackling very complex problems that might have several possible approaches to consider." },
+             { name: "ReAct (Reason & Act)", summary: "This technique enables the AI to combine thinking (reasoning) with the ability to interact with and use external tools like web search engines, calculators, or code interpreters. The AI reasons about what is needed, decides what action to take with a tool, processes the tool's output, and then uses that result to continue reasoning and work towards the final solution. It mimics how humans might use tools and internal thought to solve problems." },
+             { name: "Automatic Prompt Engineering (APE)", summary: "This is a method to automate the process of designing effective prompts for an AI model. You use an AI model itself to generate many different versions of prompts for a specific task, and then use automated evaluation methods to automatically test and find the best-performing prompt. This significantly reduces the need for humans to manually craft and experiment with prompts." }
+         ];
 
 
         // --- Reading Part Functions ---
@@ -2290,7 +2340,7 @@ September 2024 64`
             correctAnswersCount = 0; // Reset score
             quizSummaryDiv.style.display = 'none'; // Hide summary from previous attempts
             quizSummaryDiv.innerHTML = '';
-
+             strategyReviewMenu.style.display = 'none'; // Hide strategies menu
 
             if (allQuestions.length === 0) {
                 readingArea.style.display = 'none';
@@ -2351,6 +2401,7 @@ September 2024 64`
 
 
             quizSummaryDiv.style.display = 'none';
+            strategyReviewMenu.style.display = 'none'; // Ensure strategies menu is hidden
             questionTextElement.style.display = 'block'; // Ensure these are block for animation
             optionsContainer.style.display = 'block'; // Ensure these are block for animation
 
@@ -2554,6 +2605,15 @@ September 2024 64`
                             redoButton.addEventListener('click', startRedoIncorrect);
                         }
                     }
+                    // Add Review Strategies button after summary
+                    const reviewStrategiesButton = document.createElement('button');
+                    reviewStrategiesButton.id = 'review-strategies-button';
+                    reviewStrategiesButton.textContent = 'Review Strategies Summary';
+                    reviewStrategiesButton.style.marginLeft = '10px';
+                    quizSummaryDiv.appendChild(reviewStrategiesButton);
+                    reviewStrategiesButton.addEventListener('click', showStrategyReviewMenu);
+
+
                     isRedoMode = false; // Reset after displaying redo summary if it was a redo session.
                                       // If it was a main quiz, this has no effect until startRedoIncorrect is called.
                 } // This was the correctly placed brace from the previous fix
@@ -2582,6 +2642,9 @@ September 2024 64`
 
             quizSummaryDiv.style.display = 'none';
             quizSummaryDiv.classList.remove('question-transition-in');
+            strategyReviewMenu.style.display = 'none'; // Hide strategies menu
+
+
             document.querySelector('#questions-area h2').style.display = 'block';
             totalQuestionsSpan.textContent = shuffledQuestionIndices.length;
 
@@ -2595,11 +2658,34 @@ September 2024 64`
             displaySingleQuestion();
         }
 
+        // New function to show the strategies review menu
+        function showStrategyReviewMenu() {
+            questionsArea.style.display = 'none';
+            quizSummaryDiv.style.display = 'none'; // Hide summary
+            strategyReviewMenu.style.display = 'block'; // Show the strategies menu
+
+            strategiesList.innerHTML = ''; // Clear previous list items
+
+            promptingStrategiesSummary.forEach(strategy => {
+                const listItem = document.createElement('li');
+                listItem.innerHTML = `<strong>${strategy.name}:</strong> ${strategy.summary}`;
+                strategiesList.appendChild(listItem);
+            });
+        }
+
+        // New function to go back to the quiz summary from the strategies menu
+        function backToQuizSummary() {
+             strategyReviewMenu.style.display = 'none'; // Hide strategies menu
+             questionsArea.style.display = 'block'; // Show questions area (which contains the summary)
+             quizSummaryDiv.style.display = 'block'; // Show the summary itself
+        }
+
 
         function backToReading() {
             questionsArea.style.display = 'none';
             readingArea.style.display = 'block';
             quizSummaryDiv.style.display = 'none'; // Hide summary
+            strategyReviewMenu.style.display = 'none'; // Hide strategies menu
             
             // Restore visibility of question elements for next quiz attempt
             document.querySelector('#questions-area h2').style.display = 'block';
@@ -2640,6 +2726,9 @@ September 2024 64`
         submitAnswerButton.addEventListener('click', handleSubmitAnswer);
         nextQuestionButton.addEventListener('click', handleNextQuestion);
         backToReadingButton.addEventListener('click', backToReading);
+        // Event listener for the "Back to Summary" button in the strategies menu
+        backToSummaryButton.addEventListener('click', backToQuizSummary);
+
 
         // Initial page load for reading material
         displayPage();
