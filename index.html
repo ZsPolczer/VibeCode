@@ -3,84 +3,199 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ZombiGames - Retro Collection</title>
-    <link rel="stylesheet" href="style.css">
+    <title>Zsombor Polczer | Praktikum 2025 Projects</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* Basic Reset and Body Styling */
+        body {
+            font-family: 'Inter', sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            background-color: #121212; /* Dark background */
+            color: #E0E0E0; /* Light text */
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        .container {
+            width: 90%;
+            max-width: 1200px; /* Allow wider content for grid */
+            margin: 40px auto;
+            padding: 0 20px;
+            flex-grow: 1;
+        }
+
+        /* Header Styling */
+        header {
+            background-color: #1F1F1F; /* Slightly different dark shade for header */
+            color: #FFFFFF;
+            padding: 30px 20px;
+            text-align: center;
+            margin-bottom: 40px;
+            border-bottom: 2px solid #00BFFF; /* Accent border */
+        }
+
+        header h1 {
+            margin: 0;
+            font-size: 2.2em;
+            font-weight: 700;
+        }
+
+        .page-title { /* Title above the grid */
+            font-size: 1.8em;
+            font-weight: 600;
+            color: #00BFFF; /* Accent color for this title */
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        /* Project Grid Styling */
+        .project-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); /* Responsive grid */
+            gap: 25px; /* Space between cards */
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .project-card {
+            background-color: #1E1E1E; /* Dark card background */
+            border-radius: 8px;
+            overflow: hidden; /* To ensure image border-radius works */
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            display: flex;
+            flex-direction: column; /* Stack image, title, description vertically */
+        }
+
+        .project-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 6px 12px rgba(0, 191, 255, 0.2); /* Accent color glow */
+        }
+
+        .project-card img.preview-image {
+            width: 100%;
+            height: 180px; /* Consistent image height */
+            object-fit: cover; /* Cover the area, crop if needed */
+            border-bottom: 1px solid #333; /* Subtle separator */
+        }
+
+        .project-card .card-content {
+            padding: 20px;
+            flex-grow: 1; /* Allows content to fill remaining card space */
+            display: flex;
+            flex-direction: column;
+        }
+
+        .project-card h3 {
+            margin-top: 0;
+            margin-bottom: 10px;
+            font-size: 1.4em;
+            font-weight: 600;
+        }
+
+        .project-card h3 a {
+            text-decoration: none;
+            color: #00BFFF; /* Accent color for links */
+            transition: color 0.3s ease;
+        }
+
+        .project-card h3 a:hover {
+            color: #33CCFF; /* Lighter accent on hover */
+            text-decoration: underline;
+        }
+
+        .project-card p {
+            margin: 0 0 10px 0;
+            color: #B0B0B0; /* Slightly dimmer text for description */
+            font-size: 0.95em;
+            flex-grow: 1; /* Allows description to take available space before any potential buttons */
+        }
+
+        /* Footer Styling */
+        footer {
+            text-align: center;
+            padding: 20px;
+            margin-top: 40px;
+            color: #888;
+            font-size: 0.9em;
+            border-top: 1px solid #333;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            header h1 {
+                font-size: 1.8em;
+            }
+            .page-title {
+                font-size: 1.5em;
+            }
+            .project-grid {
+                grid-template-columns: 1fr; /* Single column on smaller screens */
+            }
+        }
+    </style>
 </head>
 <body>
+
+    <header>
+        <h1>Praktikum 2025 | Hübert'sche Schule | Zsombor Polczer</h1>
+    </header>
+
     <div class="container">
-        <header>
-            <h1>ZombiGames</h1>
-            <p>Your Retro Arcade</p>
-        </header>
+        <h2 class="page-title">My Projects</h2>
+        <p class="page-subtitle">These projects have been developed with the help of AI.</p> 
+        <div class="project-grid">
+            <div class="project-card">
+                <img src="Battlenite.png" alt="Preview of Battlenite Game" class="preview-image">
+                <div class="card-content">
+                    <h3><a href="Battlenite.html">Battlenite</a></h3>
+                    <p>A Battle Royale Game which starts off on an island where 50 players will have to fight for survival. The Last remaining player wins!</p>
+                </div>
+            </div>
 
-        <nav class="game-list-nav">
-            <h2>Select Your Game:</h2>
-            <ul id="game-list">
-                <!-- Game links will be inserted here by JavaScript -->
-                <li class="loading">Loading games...</li>
-            </ul>
-        </nav>
+            <div class="project-card">
+                <img src="LearningApp.png" alt="Preview of Learning App" class="preview-image">
+                <div class="card-content">
+                    <h3><a href="LearningApp.html">Learning App</a></h3>
+                    <p>This is an application which first provides you with a recent whitepaper from google (about prompting techniques) which you read. In the following you are asked 20 qestions with 4 answers each. In the end there is an evaluation with a grade from the german grading system below it.</p>
+                </div>
+            </div>
 
-        <footer>
-            <p>© <span id="year"></span> ZombiGames. Insert Coin to Continue.</p>
-        </footer>
+            <div class="project-card">
+                <img src="MazeGame.png" alt="Preview of Maze Game" class="preview-image">
+                <div class="card-content">
+                    <h3><a href="MazeGame.html">MazeGame</a></h3>
+                    <p>In MazeGame the player has got to solve a randomly generated maze in a given time.</p>
+                </div>
+            </div>
+
+            <div class="project-card">
+                <img src="Tetris.png" alt="Preview of Elemental Tetris Game" class="preview-image">
+                <div class="card-content">
+                    <h3><a href="Tetris.html">Tetris (Elemental Twist)</a></h3>
+                    <p>Almost like the retro game but a twist! The blocks are made of elements which interact with another, thus changing the entire game!</p>
+                </div>
+            </div>
+
+            <div class="project-card">
+                <img src="ZombieRun.png" alt="Preview of Zombie Run Game" class="preview-image">
+                <div class="card-content">
+                    <h3><a href="ZombieRun.html">Zombie Run</a></h3>
+                    <p>Zombie run as the name it says is about the player who is given the objectum to escape a horde of zombies while dodging several obstacles.</p>
+                </div>
+            </div>
+        </div>
     </div>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const gameListContainer = document.getElementById('game-list');
-            gameListContainer.innerHTML = ''; // Clear the "Loading..." message
+    <footer>
+        <p>© 2025 Zsombor Polczer. All rights reserved.</p>
+    </footer>
 
-            // --- !!! IMPORTANT: MANUALLY UPDATE THIS LIST !!! ---
-            // Add the exact filenames of your HTML game files here.
-            const gameFiles = [
-                "MazeGame.html",
-                "ZombieRun.html"
-                // Add more game filenames like "MyCoolGame.html"
-            ];
-            // --- !!! END OF MANUAL UPDATE SECTION !!! ---
-
-
-            if (gameFiles.length === 0) {
-                const noGamesItem = document.createElement('li');
-                noGamesItem.textContent = "No games found in the list!";
-                noGamesItem.classList.add('no-games');
-                gameListContainer.appendChild(noGamesItem);
-
-            } else {
-                gameFiles.forEach(filename => {
-                    // Basic check to ensure it's likely a game file and not index.html
-                    if (filename.toLowerCase().endsWith('.html') && filename.toLowerCase() !== 'index.html') {
-
-                        // 1. Extract base name (remove .html)
-                        let baseName = filename.substring(0, filename.length - 5); // Remove .html
-
-                        // 2. Convert CamelCase/PascalCase to Title Case with spaces
-                        // Add space before capital letters (unless it's the first char), then trim.
-                        let formattedName = baseName
-                            .replace(/([A-Z])/g, ' $1') // Add space before caps
-                            .replace(/^./, (str) => str.toUpperCase()) // Ensure first letter is uppercase
-                            .trim(); // Remove leading/trailing spaces
-
-                        // Create list item and link
-                        const listItem = document.createElement('li');
-                        const link = document.createElement('a');
-                        link.href = filename;        // Link to the actual file
-                        link.textContent = formattedName; // Display the formatted name
-                        link.classList.add('game-link'); // Add class for styling
-
-                        listItem.appendChild(link);
-                        gameListContainer.appendChild(listItem);
-                    }
-                });
-            }
-
-             // Set current year in footer
-             document.getElementById('year').textContent = new Date().getFullYear();
-        });
-    </script>
 </body>
 </html>

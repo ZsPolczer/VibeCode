@@ -11,6 +11,9 @@
       font-family: 'Courier New', monospace;
       text-align: center;
       padding-top: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center; /* Center content horizontally */
     }
 
     h1 {
@@ -18,8 +21,8 @@
       text-shadow: 0 0 5px cyan, 0 0 10px lime;
     }
 
-    canvas {
-      background: black;
+    canvas#mazeCanvas { /* More specific selector for the game canvas */
+      background: #111; /* Slightly off-black for canvas background to distinguish if paths are black */
       display: block;
       margin: 20px auto;
       border: 4px solid cyan;
@@ -34,6 +37,7 @@
       font-size: 24px;
       margin-top: 10px;
       color: yellow;
+      min-height: 1.2em; /* Reserve space to prevent layout shifts */
     }
 
     #confettiCanvas {
@@ -56,302 +60,329 @@
   <canvas id="mazeCanvas" width="300" height="300"></canvas>
   <div id="message"></div>
 
-  <!-- Confetti Canvas -->
   <canvas id="confettiCanvas"></canvas>
 
-  <!-- Winning Sound -->
-  <audio id="winSound" src="https://www.soundjay.com/buttons/sounds/button-16.mp3" preload="auto"></audio>
-
   <script>
-    const confettiCanvas = document.getElementById("confettiCanvas");
-    const confettiCtx = confettiCanvas.getContext("2d");
-    confettiCanvas.width = window.innerWidth;
-    confettiCanvas.height = window.innerHeight;
+    // --- DOM Elements ---
+    const confettiCanvasEl = document.getElementById("confettiCanvas");
+    const confettiCtx = confettiCanvasEl.getContext("2d");
+    const gameCanvasEl = document.getElementById("mazeCanvas");
+    const gameCtx = gameCanvasEl.getContext("2d");
+    const levelEl = document.getElementById("level");
+    const timerEl = document.getElementById("timer");
+    const messageEl = document.getElementById("message");
 
-    const canvas = document.getElementById("mazeCanvas");
-    const ctx = canvas.getContext("2d");
+    // --- Game Configuration ---
+    const TILE_SIZE = 30;
+    const MAZE_ROWS = gameCanvasEl.height / TILE_SIZE; // e.g., 300 / 30 = 10
+    const MAZE_COLS = gameCanvasEl.width / TILE_SIZE;  // e.g., 300 / 30 = 10
 
-    const tileSize = 30;
-    const rows = 10;
-    const cols = 10;
-
-    let maze = [];
+    // --- Game State ---
+    let maze = []; // 2D array: 0 for path, 1 for wall
     let player = { x: 1, y: 1 };
-    let goal = { x: 8, y: 8 };
+    let goal = { x: MAZE_COLS - 2, y: MAZE_ROWS - 2 };
 
-    let baseTime = 60;
-    let timeLeft = baseTime;
-    let level = 1;
-    let timerInterval = null;
+    let currentLevel = 1;
+    let baseTimeLimit = 60; // seconds
+    let timeLeft = baseTimeLimit;
+    let timerIntervalId = null;
 
-    const winSound = document.getElementById("winSound");
+    const WALL = 1;
+    const PATH = 0;
 
+    // --- Helper Functions ---
+    function shuffleArray(array) {
+        for (let i = array.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [array[i], array[j]] = [array[j], array[i]]; // Swap
+        }
+    }
+
+    // --- Maze Generation (Iterative DFS with Stack) ---
+    function generateMaze() {
+        console.log(`Generating maze for level ${currentLevel}. Dimensions: ${MAZE_ROWS}x${MAZE_COLS}`);
+        maze = Array.from({ length: MAZE_ROWS }, () => Array(MAZE_COLS).fill(WALL));
+
+        const stack = [];
+        // Start carving from (1,1) - must be odd if using 2-step carving
+        // For simpler 1-step carving, we ensure borders are walls.
+        // Player/Goal are placed within the 1 to N-2 range.
+        const startX = 1;
+        const startY = 1;
+
+        maze[startY][startX] = PATH;
+        stack.push({ x: startX, y: startY });
+
+        // Directions for carving: [dx, dy, wall_dx, wall_dy]
+        // dx, dy are 2 steps to the next cell. wall_dx, wall_dy are 1 step to the wall.
+        const directions = [
+            { x: 0, y: -2, wx: 0, wy: -1 }, // Up
+            { x: 2, y: 0, wx: 1, wy: 0 },   // Right
+            { x: 0, y: 2, wx: 0, wy: 1 },   // Down
+            { x: -2, y: 0, wx: -1, wy: 0 }   // Left
+        ];
+
+        while (stack.length > 0) {
+            const current = stack[stack.length - 1]; // Peek
+            const validNeighbors = [];
+
+            shuffleArray(directions); // Randomize direction choice
+
+            for (const dir of directions) {
+                const nextX = current.x + dir.x;
+                const nextY = current.y + dir.y;
+                const wallX = current.x + dir.wx;
+                const wallY = current.y + dir.wy;
+
+                // Check if next cell is within bounds (1 to COLS/ROWS - 2) and is a wall (unvisited)
+                if (nextX > 0 && nextX < MAZE_COLS - 1 &&
+                    nextY > 0 && nextY < MAZE_ROWS - 1 &&
+                    maze[nextY][nextX] === WALL) {
+                    validNeighbors.push({ nextX, nextY, wallX, wallY });
+                }
+            }
+
+            if (validNeighbors.length > 0) {
+                const { nextX, nextY, wallX, wallY } = validNeighbors[0]; // Pick the first (randomized due to shuffle)
+
+                maze[wallY][wallX] = PATH;   // Carve wall
+                maze[nextY][nextX] = PATH;   // Mark next cell as path
+                stack.push({ x: nextX, y: nextY }); // Move to next cell
+            } else {
+                stack.pop(); // Backtrack
+            }
+        }
+        console.log("Maze generation complete.");
+        // console.table(maze); // Uncomment for detailed maze view in console
+
+        // --- Player and Goal Placement ---
+        player = { x: 1, y: 1 }; // Always start at top-left of carveable area
+
+        // Find a suitable goal using BFS to find the furthest point
+        function bfs(startNode) {
+            const queue = [{ ...startNode, dist: 0 }];
+            const visited = new Set([`${startNode.x},${startNode.y}`]);
+            let maxDist = 0;
+            let furthestNode = { ...startNode };
+
+            const moveDirections = [[0, -1], [1, 0], [0, 1], [-1, 0]];
+
+            while (queue.length > 0) {
+                const { x, y, dist } = queue.shift();
+                if (dist > maxDist) {
+                    maxDist = dist;
+                    furthestNode = { x, y };
+                }
+                for (const [dx, dy] of moveDirections) {
+                    const nx = x + dx;
+                    const ny = y + dy;
+                    if (nx >= 0 && nx < MAZE_COLS && ny >= 0 && ny < MAZE_ROWS &&
+                        maze[ny][nx] === PATH && !visited.has(`${nx},${ny}`)) {
+                        visited.add(`${nx},${ny}`);
+                        queue.push({ x: nx, y: ny, dist: dist + 1 });
+                    }
+                }
+            }
+            return furthestNode;
+        }
+
+        goal = bfs(player);
+
+        // Fallback if BFS goal is same as player (e.g., very small maze or error)
+        if (player.x === goal.x && player.y === goal.y) {
+            console.warn("BFS goal is same as player. Attempting fallback.");
+            for (let r = MAZE_ROWS - 2; r >= 1; r--) {
+                for (let c = MAZE_COLS - 2; c >= 1; c--) {
+                    if (maze[r][c] === PATH && (r !== player.y || c !== player.x)) {
+                        goal = { x: c, y: r };
+                        console.log("Fallback goal:", goal);
+                        return; // Exit after finding first suitable fallback
+                    }
+                }
+            }
+            // If still no good goal, it might stay at player's position for tiny mazes
+            console.error("Could not find a suitable fallback goal different from player.");
+        }
+        console.log("Player:", player, "Goal:", goal);
+    }
+
+    // --- Drawing ---
+    function drawGame() {
+        // console.log("Drawing game...");
+        gameCtx.clearRect(0, 0, gameCanvasEl.width, gameCanvasEl.height);
+
+        for (let r = 0; r < MAZE_ROWS; r++) {
+            for (let c = 0; c < MAZE_COLS; c++) {
+                if (maze[r] && typeof maze[r][c] !== 'undefined') { // Ensure cell exists
+                    if (maze[r][c] === WALL) {
+                        gameCtx.fillStyle = "#444"; // Wall color
+                    } else {
+                        gameCtx.fillStyle = "#ccc"; // Path color - Light gray for high contrast
+                    }
+                    gameCtx.fillRect(c * TILE_SIZE, r * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+                } else {
+                    // This should not happen if maze is initialized correctly
+                    // console.error(`Cell maze[${r}][${c}] is undefined during draw`);
+                }
+            }
+        }
+
+        // Draw Player
+        if (player) {
+            gameCtx.fillStyle = "cyan";
+            gameCtx.fillRect(player.x * TILE_SIZE, player.y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+        }
+
+        // Draw Goal
+        if (goal) {
+            gameCtx.fillStyle = "yellow";
+            gameCtx.fillRect(goal.x * TILE_SIZE, goal.y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+        }
+        // console.log("Drawing complete.");
+    }
+
+    // --- Game Logic ---
     function updateUI() {
-      document.getElementById("timer").textContent = timeLeft;
-      document.getElementById("level").textContent = level;
+        levelEl.textContent = currentLevel;
+        timerEl.textContent = timeLeft;
     }
 
     function startTimer() {
-      clearInterval(timerInterval);
-      timerInterval = setInterval(() => {
-        timeLeft--;
+        clearInterval(timerIntervalId);
+        timeLeft = baseTimeLimit;
         updateUI();
-        if (timeLeft <= 0) {
-          clearInterval(timerInterval);
-          document.getElementById("message").textContent = "⏰ Time's up!";
-          setTimeout(resetGame, 2000);
-        }
-      }, 1000);
+        timerIntervalId = setInterval(() => {
+            timeLeft--;
+            updateUI();
+            if (timeLeft <= 0) {
+                clearInterval(timerIntervalId);
+                messageEl.textContent = "⏰ Time's up! Press R to restart.";
+                // Game over logic (movement is already blocked)
+            }
+        }, 1000);
     }
 
     function resetGame() {
-      level = 1;
-      baseTime = 60;
-      timeLeft = baseTime;
-      updateUI();
-      generateMaze();
-      startTimer();
-    }
-
-    function generateMaze() {
-      if (timeLeft <= 0) return;
-
-      // Reset full-wall maze
-      maze = Array.from({ length: rows }, () => Array(cols).fill(1));
-
-      const stack = [];
-      const visited = new Set();
-
-      const directions = [
-        [0, -1], // up
-        [1, 0],  // right
-        [0, 1],  // down
-        [-1, 0], // left
-      ];
-
-      function getNeighbors(x, y) {
-        return directions
-          .map(([dx, dy]) => [x + dx * 2, y + dy * 2])
-          .filter(
-            ([nx, ny]) =>
-              nx >= 1 &&
-              ny >= 1 &&
-              nx < cols - 1 &&
-              ny < rows - 1 &&
-              !visited.has(`${nx},${ny}`)
-          );
-      }
-
-      function carve(x1, y1, x2, y2) {
-        maze[y1][x1] = 0;
-        maze[Math.floor((y1 + y2) / 2)][Math.floor((x1 + x2) / 2)] = 0;
-      }
-
-      const startX = 1, startY = 1;
-      visited.add(`${startX},${startY}`);
-      maze[startY][startX] = 0;
-      stack.push([startX, startY]);
-
-      while (stack.length > 0) {
-        const current = stack[stack.length - 1];
-        const neighbors = getNeighbors(...current);
-
-        if (neighbors.length === 0) {
-          stack.pop();
-        } else {
-          const [nx, ny] = neighbors[Math.floor(Math.random() * neighbors.length)];
-          visited.add(`${nx},${ny}`);
-          carve(current[0], current[1], nx, ny);
-          stack.push([nx, ny]);
-        }
-      }
-
-      // Find all walkable tiles
-      const walkableTiles = [];
-      for (let y = 1; y < rows - 1; y++) {
-        for (let x = 1; x < cols - 1; x++) {
-          if (maze[y][x] === 0) walkableTiles.push({ x, y });
-        }
-      }
-
-      // BFS to find furthest point from start
-      function bfs(startTile) {
-        const queue = [{ ...startTile, dist: 0 }];
-        const visited = new Set();
-        let maxDist = 0;
-        let furthestTile = startTile;
-
-        while (queue.length > 0) {
-          const { x, y, dist } = queue.shift();
-          const key = `${x},${y}`;
-          if (visited.has(key)) continue;
-          visited.add(key);
-
-          if (dist > maxDist) {
-            maxDist = dist;
-            furthestTile = { x, y };
-          }
-
-          directions.forEach(([dx, dy]) => {
-            const nx = x + dx, ny = y + dy;
-            if (
-              nx >= 0 && ny >= 0 &&
-              nx < cols && ny < rows &&
-              maze[ny][nx] === 0 &&
-              !visited.has(`${nx},${ny}`)
-            ) {
-              queue.push({ x: nx, y: ny, dist: dist + 1 });
-            }
-          });
-        }
-
-        return furthestTile;
-      }
-
-      player = { x: 1, y: 1 };
-      goal = bfs(player);
-
-      if (player.x === goal.x && player.y === goal.y) {
-        goal = walkableTiles[(walkableTiles.length * 0.75) | 0];
-      }
-
-      maze[goal.y][goal.x] = 0;
-
-      drawMaze();
-      document.getElementById("message").textContent = "";
-    }
-
-    function drawMaze() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      for (let y = 0; y < rows; y++) {
-        for (let x = 0; x < cols; x++) {
-          if (maze[y][x] === 1) {
-            ctx.fillStyle = "#444"; // Wall
-          } else {
-            ctx.fillStyle = "#000"; // Path
-          }
-          ctx.fillRect(x * tileSize, y * tileSize, tileSize, tileSize);
-        }
-      }
-
-      // Redraw walls for visibility
-      for (let y = 0; y < rows; y++) {
-        for (let x = 0; x < cols; x++) {
-          if (maze[y][x] === 1) {
-            ctx.fillStyle = "#555";
-            ctx.fillRect(x * tileSize, y * tileSize, tileSize, tileSize);
-          }
-        }
-      }
-
-      // Draw player
-      ctx.fillStyle = "cyan";
-      ctx.fillRect(player.x * tileSize, player.y * tileSize, tileSize, tileSize);
-
-      // Draw goal
-      ctx.fillStyle = "yellow";
-      ctx.fillRect(goal.x * tileSize, goal.y * tileSize, tileSize, tileSize);
+        console.log("Resetting game...");
+        clearInterval(timerIntervalId);
+        currentLevel = 1;
+        baseTimeLimit = 60;
+        messageEl.textContent = "";
+        generateMaze();
+        drawGame();
+        startTimer();
     }
 
     function movePlayer(dx, dy) {
-      const newX = player.x + dx;
-      const newY = player.y + dy;
+        if (timeLeft <= 0) return;
 
-      if (
-        newX >= 0 && newX < cols &&
-        newY >= 0 && newY < rows &&
-        maze[newY][newX] === 0 &&
-        timeLeft > 0
-      ) {
-        player.x = newX;
-        player.y = newY;
-        drawMaze();
-        checkWin();
-      }
+        const newX = player.x + dx;
+        const newY = player.y + dy;
+
+        if (newX >= 0 && newX < MAZE_COLS && newY >= 0 && newY < MAZE_ROWS &&
+            maze[newY] && maze[newY][newX] === PATH) {
+            player.x = newX;
+            player.y = newY;
+            drawGame();
+            checkWin();
+        }
     }
 
     function checkWin() {
-      if (player.x === goal.x && player.y === goal.y && timeLeft > 0) {
-        winSound.currentTime = 0;
-        winSound.play();
+        if (player.x === goal.x && player.y === goal.y) {
+            messageEl.textContent = "🎉 Goal Reached!";
+            currentLevel++;
+            if (baseTimeLimit > 10) baseTimeLimit -= 2;
+            else if (baseTimeLimit > 4) baseTimeLimit -= 1;
+            
+            showConfetti();
 
-        showConfetti();
-        document.getElementById("message").textContent = "🎉 Goal Reached!";
-        level++;
-        if (baseTime > 4) baseTime -= 2;
-        timeLeft = baseTime;
-        updateUI();
-
-        setTimeout(() => {
-          generateMaze();
-        }, 1000);
-      }
-    }
-
-    function showConfetti() {
-      const pieces = [];
-
-      for (let i = 0; i < 100; i++) {
-        pieces.push({
-          x: Math.random() * confettiCanvas.width,
-          y: Math.random() * confettiCanvas.height - confettiCanvas.height,
-          radius: Math.random() * 5 + 3,
-          color: `hsl(${Math.random() * 360}, 100%, 50%)`,
-          dx: (Math.random() - 0.5) * 4,
-          dy: Math.random() * 4 + 2,
-        });
-      }
-
-      function animate() {
-        confettiCtx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
-        let stillFalling = false;
-
-        for (const p of pieces) {
-          p.y += p.dy;
-          p.x += p.dx;
-          p.dy += 0.05;
-
-          if (p.y < confettiCanvas.height) {
-            stillFalling = true;
-            confettiCtx.beginPath();
-            confettiCtx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
-            confettiCtx.fillStyle = p.color;
-            confettiCtx.fill();
-          }
+            setTimeout(() => {
+                messageEl.textContent = "";
+                generateMaze();
+                drawGame();
+                // Timer continues from 'startTimer' called during 'resetGame' or initial setup,
+                // but timeLeft is reset for the new level.
+                timeLeft = baseTimeLimit; // Reset time for new level
+                updateUI(); // Reflect new time
+                // No need to call startTimer() again unless you want to fully reset its interval behavior.
+            }, 1500);
         }
-
-        if (stillFalling) requestAnimationFrame(animate);
-      }
-
-      animate();
     }
 
+    // --- Confetti ---
+    function showConfetti() {
+        if (showConfetti.animationFrameId) cancelAnimationFrame(showConfetti.animationFrameId);
+        const pieces = [];
+        for (let i = 0; i < 100; i++) {
+            pieces.push({
+                x: Math.random() * confettiCanvasEl.width,
+                y: Math.random() * confettiCanvasEl.height - confettiCanvasEl.height,
+                radius: Math.random() * 5 + 3,
+                color: `hsl(${Math.random() * 360}, 100%, 70%)`,
+                dx: (Math.random() - 0.5) * 6,
+                dy: Math.random() * 4 + 3,
+                gravity: 0.05 + Math.random() * 0.05
+            });
+        }
+        function animateConfetti() {
+            confettiCtx.clearRect(0, 0, confettiCanvasEl.width, confettiCanvasEl.height);
+            let stillFalling = false;
+            for (const p of pieces) {
+                p.y += p.dy; p.x += p.dx; p.dy += p.gravity;
+                if (p.x > confettiCanvasEl.width - p.radius || p.x < p.radius) p.dx *= -0.8;
+                if (p.y < confettiCanvasEl.height + p.radius * 5) {
+                    stillFalling = true;
+                    confettiCtx.beginPath();
+                    confettiCtx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                    confettiCtx.fillStyle = p.color;
+                    confettiCtx.fill();
+                }
+            }
+            if (stillFalling) showConfetti.animationFrameId = requestAnimationFrame(animateConfetti);
+            else { confettiCtx.clearRect(0, 0, confettiCanvasEl.width, confettiCanvasEl.height); showConfetti.animationFrameId = null; }
+        }
+        animateConfetti();
+    }
+    showConfetti.animationFrameId = null;
+
+    // --- Event Listeners ---
     window.addEventListener("keydown", (e) => {
-      switch (e.key) {
-        case "ArrowUp":
-          movePlayer(0, -1);
-          break;
-        case "ArrowDown":
-          movePlayer(0, 1);
-          break;
-        case "ArrowLeft":
-          movePlayer(-1, 0);
-          break;
-        case "ArrowRight":
-          movePlayer(1, 0);
-          break;
-      }
+        if (timeLeft <= 0 && e.key.toLowerCase() !== 'r') {
+            if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'w', 'a', 's', 'd'].includes(e.key.toLowerCase())) {
+                e.preventDefault();
+            }
+            return;
+        }
+        let handled = false;
+        switch (e.key.toLowerCase()) {
+            case "arrowup": case "w": movePlayer(0, -1); handled = true; break;
+            case "arrowdown": case "s": movePlayer(0, 1); handled = true; break;
+            case "arrowleft": case "a": movePlayer(-1, 0); handled = true; break;
+            case "arrowright": case "d": movePlayer(1, 0); handled = true; break;
+            case "r": resetGame(); handled = true; break;
+        }
+        if (handled) e.preventDefault();
     });
 
-    // Start Game
-    updateUI();
-    generateMaze();
-    startTimer();
+    window.addEventListener('resize', () => {
+        confettiCanvasEl.width = window.innerWidth;
+        confettiCanvasEl.height = window.innerHeight;
+    });
 
+    // --- Initialization ---
+    function initGame() {
+        console.log("Initializing game...");
+        confettiCanvasEl.width = window.innerWidth;
+        confettiCanvasEl.height = window.innerHeight;
+        
+        generateMaze(); // Generate the first maze
+        drawGame();     // Draw it
+        startTimer();   // Start the game timer
+        console.log("Game started.");
+    }
 
-
-    
+    initGame();
   </script>
 </body>
 </html>

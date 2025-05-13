@@ -1,4 +1,3 @@
-enemy ai improvement should priorise opening chests first and then attacking but not only targeting player, also attacking other AIs
 Entities cant spawn in houses because they cant escape them
 storm is shrinking significantly faster
 every player spawns at different locations not overlaping
